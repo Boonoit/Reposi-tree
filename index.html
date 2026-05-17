@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1D4556">
+  <title>Park Tree Map</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: sans-serif; }
+    #map { height: 100vh; height: 100dvh; width: 100%; }
+    .leaflet-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    #panel-toggle {
+      position: absolute;
+      top: 10px;
+      right: 310px;   /* just left of the 300px panel + 10px gap */
+      z-index: 1001;
+      background: white;
+      border: 2px solid rgba(0,0,0,0.25);
+      border-radius: 4px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+      user-select: none;
+      transition: right 0.15s;
+    }
+    #panel-toggle:hover { background: #f4f4f4; }
+    #panel-toggle.collapsed { right: 10px; }
+
+    @media (max-width: 767px) {
+      #panel-toggle {
+        top: auto;
+        bottom: max(16px, env(safe-area-inset-bottom));
+        right: 10px;
+        transition: none;
+      }
+      #panel-toggle.collapsed { right: 10px; }
+    }
+
+    #panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      background: white;
+      border-left: 2px solid rgba(0,0,0,0.18);
+      padding: 12px;
+      width: 300px;
+      overflow-y: auto;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+      display: none;
+    }
+    #panel.open { display: block; }
+    @media (max-width: 767px) {
+      #panel { padding-bottom: 50px; }
+    }
+
+    #panel-header {
+      position: sticky;
+      top: -12px;       /* cancel panel's 12px padding so it sticks flush to the top edge */
+      margin: -12px -12px 12px;
+      padding: 10px 12px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1;
+    }
+    #tree-count {
+      font-size: 12px;
+      color: #555;
+      font-weight: bold;
+    }
+    #filter-reset {
+      font-size: 12px;
+      color: #2a7ae2;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      text-decoration: underline;
+    }
+    #filter-reset:hover { color: #1a5ab8; }
+    #filter-share {
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: #2a7ae2; display: flex; align-items: center;
+    }
+    #filter-share:hover { color: #1a5ab8; }
+
+    #map.add-mode { cursor: crosshair; }
+
+    #map-dim {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 999;
+      background: rgba(0,0,0,0.25);
+      cursor: pointer;
+    }
+    @media (max-width: 767px) {
+      #map-dim.active { display: block; }
+    }
+
+    .add-tree-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .add-tree-btns button, .add-tree-method-row button {
+      font-size: 12px;
+      cursor: pointer;
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 5px 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 1;
+      box-sizing: border-box;
+      white-space: nowrap;
+      justify-content: center;
+    }
+    .add-tree-btns button:hover, .add-tree-method-row button:hover { background: #e8e8e8; }
+    .add-tree-btns button.active { background: #fdecea; border-color: #c0392b; color: #c0392b; }
+    #btn-copy-coords svg { flex-shrink: 0; }
+    #btn-add-tree-init { background: #e8f4ec; border-color: #5a9e7a; color: #3a6e52; }
+    #btn-add-tree-init:hover { background: #d4ecdf; }
+    .add-tree-method-row { display: none; gap: 6px; }
+    .add-tree-method-row.visible { display: flex; }
+    #btn-click-map.active { background: #fff3cd; border-color: #d4a017; color: #7a5c00; }
+    #btn-cancel-add-tree { flex: 0 0 auto; font-weight: bold; color: #888; }
+
+    /* Add tree modal */
+    #add-tree-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      background: rgba(0,0,0,0.4);
+    }
+    #add-tree-backdrop.open { display: block; }
+    #add-tree-modal {
+      position: fixed;
+      z-index: 3001;
+      background: white;
+      padding: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+    /* Desktop: centred modal */
+    @media (min-width: 768px) {
+      #add-tree-modal {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 10px;
+        width: 380px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+    }
+    /* Mobile: bottom sheet */
+    @media (max-width: 767px) {
+      #add-tree-modal {
+        bottom: 0; left: 0; right: 0;
+        border-radius: 14px 14px 0 0;
+        max-height: 85vh;
+        overflow-y: auto;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        padding-bottom: 28px;
+      }
+      #add-tree-modal.open { transform: translateY(0); }
+    }
+    @media (min-width: 768px) {
+      #add-tree-modal { display: none; }
+      #add-tree-modal.open { display: block; }
+    }
+    #add-tree-handle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 16px; }
+    #add-tree-modal h3 { margin: 0 0 14px; font-size: 15px; color: #1a1a1a; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    #add-tree-coords-display { font-size: 11px; font-weight: 400; color: #999; }
+    #add-tree-form label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 10px; }
+    #add-tree-form label .field-hint { display: block; font-weight: 400; font-size: 11px; color: #888; margin-bottom: 2px; }
+    #add-tree-form input[type=text],
+    #add-tree-form select,
+    #add-tree-form textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 7px 9px;
+      font-size: 16px; /* prevent iOS zoom */
+      font-family: inherit;
+      margin-top: 3px;
+    }
+    #add-tree-form textarea { resize: vertical; }
+    #add-tree-form input::placeholder,
+    #add-tree-form textarea::placeholder { color: #aaa; }
+    #add-tree-form .tagify { --placeholder-color: #aaa; }
+    /* Tagify integration */
+    #add-tree-form .tagify__tag { margin-block: 3px; }
+    #add-tree-form .tagify {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-family: inherit;
+      margin-top: 3px;
+      min-height: 38px;
+      --tag-bg: hsl(140, 40%, 88%);
+      --tag-hover: hsl(140, 40%, 80%);
+      --tag-text-color: hsl(140, 50%, 28%);
+      --tag-remove-btn-color: hsl(140, 40%, 45%);
+      --tag-remove-btn-bg--hover: hsl(140, 40%, 75%);
+      --tags-border-color: #ddd;
+      --tags-focus-border-color: #5a9e7a;
+    }
+    #add-tree-form .tagify__input {
+      font-size: 16px; /* prevent iOS zoom */
+      font-family: inherit;
+      font-weight: normal;
+    }
+    #add-tree-form .tagify__dropdown {
+      font-size: 14px;
+      font-family: inherit;
+    }
+    #add-tree-form .tagify__dropdown.tags-look .tagify__dropdown__item {
+      display: inline-flex;
+      margin: 3px;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 12px;
+    }
+    .add-tree-year-row { display: flex; gap: 8px; }
+    .add-tree-year-row label { flex: 1; }
+    .add-tree-more-row { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 10px 0 4px; }
+    #btn-more-fields { background: none; border: none; cursor: pointer; font-size: 12px; color: #2a7ae2; padding: 0; }
+    #btn-more-fields:hover { text-decoration: underline; }
+    .add-tree-more-hint { font-size: 11px; color: #aaa; }
+    .add-tree-photos { margin: 12px 0 4px; }
+    .add-tree-photos-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; }
+    .add-tree-photo-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .add-tree-photo-thumbs:empty { display: none; }
+    .add-tree-photo-thumb {
+      position: relative;
+      width: 64px; height: 64px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #ddd;
+      background-size: cover;
+      background-position: center;
+    }
+    .add-tree-photo-thumb .add-tree-photo-status {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: white;
+      background: rgba(0,0,0,0.45);
+    }
+    .add-tree-photo-thumb.uploaded .add-tree-photo-status { display: none; }
+    .add-tree-photo-thumb .add-tree-photo-remove {
+      position: absolute; top: 2px; right: 2px;
+      width: 18px; height: 18px;
+      border: none; border-radius: 50%;
+      background: rgba(0,0,0,0.6); color: white;
+      font-size: 11px; line-height: 1; cursor: pointer;
+      padding: 0;
+    }
+    .add-tree-photo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    .add-tree-photo-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 6px 12px;
+      border: 1px solid #ccc; border-radius: 6px;
+      background: #f5f5f5; cursor: pointer;
+      font-size: 12px; color: #444;
+    }
+    .add-tree-photo-btn:hover { background: #ececec; }
+    .add-tree-photo-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .add-tree-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    #btn-add-tree-submit {
+      font-size: 13px; padding: 7px 18px; cursor: pointer;
+      border: 1px solid #5a9e7a; border-radius: 6px;
+      background: #e8f4ec; color: #3a6e52; font-weight: 600;
+    }
+    #btn-add-tree-submit:hover { background: #d4ecdf; }
+    #btn-add-tree-submit:disabled { opacity: 0.6; cursor: default; }
+    .add-tree-actions .btn-cancel-modal {
+      font-size: 12px; padding: 7px 14px; cursor: pointer;
+      border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5;
+    }
+    #add-tree-status { font-size: 12px; color: #666; margin-left: auto; }
+
+    /* ── Install banner ──────────────────────────────────────────────────────── */
+    .install-banner {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 4000;
+      animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .install-banner-content {
+      background: #D6E8F0;
+      padding: 20px 16px;
+      border-top: 3px solid #1D4556;
+    }
+    .install-banner-title {
+      font-size: 18px; font-weight: 700; color: #1D4556; margin-bottom: 4px;
+    }
+    .install-banner-text {
+      font-size: 14px; line-height: 1.4; color: #1D4556; margin-bottom: 0;
+    }
+    .install-banner-reason {
+      display: none; font-size: 14px; line-height: 1.4; color: #1D4556;
+      margin: 12px 0 0; padding: 0 0 0 20px; list-style: disc;
+    }
+    .install-banner-reason.visible { display: block; }
+    .install-banner-reason li { margin-bottom: 8px; }
+    .install-banner-reason li:last-child { margin-bottom: 0; }
+    .install-banner-actions {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 16px;
+    }
+    .install-banner-actions-right {
+      display: flex; align-items: center; gap: 16px;
+    }
+    .install-banner-why {
+      font-size: 14px; font-weight: 600; color: #1D4556; background: none; border: none; cursor: pointer; padding: 0;
+    }
+    .install-banner-dismiss {
+      font-size: 14px; font-weight: 600; color: #1D4556; opacity: 0.6;
+      background: none; border: none; cursor: pointer; padding: 0;
+    }
+    .install-banner-btn {
+      display: flex; align-items: center; gap: 4px;
+      height: 36px; padding: 0 16px; border-radius: 18px;
+      background: #3B7A5C; color: white;
+      font-size: 14px; font-weight: 700; border: none; cursor: pointer;
+    }
+    .install-banner-ios-instructions {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; line-height: 1.4; color: #1D4556;
+    }
+    .install-banner-ios-instructions svg { flex-shrink: 0; }
+
+    #add-toast {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      background: rgba(0,0,0,0.75);
+      color: white;
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #add-toast.show { opacity: 1; }
+
+    #hover-label {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px 16px;
+      text-align: center;
+      pointer-events: none;
+      z-index: 2000;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      white-space: nowrap;
+    }
+    #hover-label.visible { display: block; }
+    #hover-label .lbl-sci { display: block; font-size: 16px; font-style: italic; font-weight: 600; color: #1a1a1a; line-height: 1.4; }
+    #hover-label .lbl-com { display: block; font-size: 13px; color: #555; line-height: 1.4; }
+    @media (max-width: 767px) { #hover-label { display: none !important; } }
+
+    .section-label {
+      background: none;
+      border: none;
+      font-size: 11px;
+      font-weight: bold;
+      color: rgba(0,0,0,0.55);
+      white-space: nowrap;
+      text-shadow: 0 0 3px white, 0 0 3px white;
+      pointer-events: none;
+    }
+
+    .filter-section { margin-bottom: 12px; }
+    .filter-section > .filter-label {
+      display: block;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #777;
+      margin-bottom: 4px;
+    }
+    .filter-section select {
+      width: 100%;
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: white;
+    }
+
+    .checkbox-group {
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 3px;
+      padding: 4px 6px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 2px 0;
+      cursor: pointer;
+      color: #333;
+    }
+    .checkbox-item input { cursor: pointer; flex-shrink: 0; }
+
+
+    .month-grid { display: grid; grid-template-columns: repeat(12, 1fr); margin-top: 4px; }
+    .month-btn {
+      display: flex; align-items: center; justify-content: center;
+      height: 24px; font-size: 11px; font-weight: 600; cursor: pointer;
+      border: 1px solid #ddd; border-radius: 0; background: white;
+      margin-left: -1px; user-select: none; color: #555;
+    }
+    .month-btn:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
+    .month-btn:last-child  { border-radius: 0 3px 3px 0; }
+    .month-btn:hover { background: #e8e8e8; }
+    .month-btn.current { border-color: #2a7ae2; color: #2a7ae2; z-index: 1; }
+    .month-btn.selected { background: #2a7ae2; border-color: #2a7ae2; color: white; z-index: 1; }
+    .month-btn.selected.current { background: #1a5ab8; border-color: #1a5ab8; }
+    .month-btn input { display: none; }
+
+
+    /* Tree labels (permanent tooltips shown at high zoom) */
+    .tree-label {
+      background: none; border: none; box-shadow: none; padding: 0;
+      pointer-events: none; white-space: nowrap;
+    }
+    .tree-label::before { display: none; }
+    .tree-label .lbl-sci { display: block; font-size: 12px; font-style: italic; font-weight: 600; color: #1a1a1a; text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white; line-height: 1.3; }
+    .tree-label .lbl-com { display: block; font-size: 10px; color: #444; text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white; line-height: 1.3; }
+
+    /* Popup styles */
+    .tree-popup { font-size: 13px; line-height: 1.65; min-width: 180px; }
+    .tree-popup h4 { font-size: 16px; margin-bottom: 6px; font-style: italic; color: #1a1a1a; user-select: all; }
+    .tree-popup .prop { color: #555; margin: 8px 0; line-height: 1.2; }
+    .tree-popup .prop b { color: #1a1a1a; font-weight: 600; }
+    .tree-popup .prop span { user-select: all; }
+    .watering-panel { background: #e8f4fb; border-radius: 4px; padding: 6px 8px; margin: 8px 0; }
+    .watering-panel .prop { margin: 4px 0; }
+    @keyframes pulse-drop {
+      0%   { transform: scale(1);   opacity: 1; }
+      50%  { transform: scale(1.5); opacity: 0.7; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    .pulse-emoji {
+      display: inline-block;
+      animation: pulse-drop 1.4s ease-in-out infinite;
+    }
+    .watering-drop-icon {
+      background: none !important; border: none !important;
+      overflow: visible !important; white-space: nowrap;
+    }
+    .watering-drop-icon .drop {
+      font-size: 18px; line-height: 1;
+      display: inline-block;
+      animation: pulse-drop 1.4s ease-in-out infinite;
+    }
+    .tree-popup .links { margin-top: 8px; font-size: 12px; border-top: 1px solid #eee; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .tree-popup .links > span, .tree-popup .links .feedback-link { white-space: nowrap; }
+    .tree-popup .links a { color: #2a7ae2; text-decoration: none; }
+    .tree-popup .links a:hover { text-decoration: underline; }
+
+    .tag-pills { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; }
+    .tag-pill {
+      display: inline-block; padding: 1px 6px; border-radius: 10px;
+      font-size: 11px; font-weight: 500; line-height: 1.5;
+      white-space: nowrap;
+    }
+    .feedback-form { display: none; margin-top: 8px; border-top: 1px solid #eee; padding-top: 8px; }
+    .feedback-form.open { display: block; }
+    .feedback-form textarea { width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 3px; padding: 4px 6px; font-size: 12px; resize: vertical; font-family: inherit; }
+
+    #feedback-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      background: rgba(0,0,0,0.4);
+    }
+    #feedback-backdrop.open { display: block; }
+    #feedback-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 4001;
+      background: white;
+      border-radius: 16px 16px 0 0;
+      padding: 12px 16px max(20px, env(safe-area-inset-bottom));
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+    }
+    #feedback-sheet.open { transform: translateY(0); }
+    #feedback-sheet-handle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 14px; }
+    #feedback-sheet-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a; font-style: italic; }
+    #feedback-sheet textarea { width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; font-size: 16px; font-family: inherit; resize: none; }
+    #feedback-sheet .feedback-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    #feedback-sheet .feedback-actions button { font-size: 13px; padding: 6px 16px; cursor: pointer; border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5; }
+    #feedback-sheet .feedback-actions button:hover { background: #e8e8e8; }
+    .feedback-form .feedback-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .feedback-form button { font-size: 12px; padding: 3px 10px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: #f5f5f5; }
+    .feedback-form button:hover { background: #e8e8e8; }
+    .feedback-status { font-size: 11px; color: #555; }
+    .tree-popup .photos { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+    .tree-popup .photos a { display: block; flex: 1 1 calc(50% - 4px); cursor: zoom-in; }
+    .tree-popup .photos img { width: 100%; height: 100px; object-fit: cover; border-radius: 3px; display: block; }
+
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: rgba(0,0,0,0.92);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox-img {
+      max-width: 100%;
+      max-height: calc(100dvh - 80px);
+      object-fit: contain;
+      display: block;
+      border-radius: 2px;
+    }
+    @media (max-width: 767px) {
+      #lightbox-img { cursor: zoom-in; }
+      #lightbox-img.zoomed {
+        height: 100dvh;
+        max-height: 100dvh;
+        width: auto;
+        max-width: none;
+        cursor: zoom-out;
+      }
+      #lightbox.zoomed { overflow-x: auto; justify-content: flex-start; }
+    }
+    #lightbox-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    @media (max-width: 767px) {
+      #lightbox-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      }
+    }
+    #lightbox-bar button, #lightbox-bar a {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 4px;
+      color: white;
+      font-size: 13px;
+      padding: 5px 12px;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    #lightbox-bar button:hover, #lightbox-bar a:hover { background: rgba(255,255,255,0.15); }
+    #lightbox-bar .nav { font-size: 20px; padding: 3px 14px; }
+    #lightbox-bar .nav:disabled { opacity: 0.25; cursor: default; }
+    #lightbox-close-top {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    #lightbox-close-top:hover { color: white; }
+    #lightbox-zoom-hint {
+      display: none;
+    }
+    @media (max-width: 767px) {
+      #lightbox-zoom-hint {
+        display: block;
+        position: absolute;
+        top: 24px;
+        left: 16px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.6);
+        pointer-events: none;
+      }
+    }
+    #lightbox-spinner {
+      display: none;
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: lb-spin 0.7s linear infinite;
+    }
+    #lightbox.loading #lightbox-spinner { display: block; }
+    #lightbox.loading #lightbox-img { opacity: 0; }
+    @keyframes lb-spin { to { transform: rotate(360deg); } }
+
+    /* ── WELCOME OVERLAY (shown when the sheet has no trees yet) ── */
+    #welcome-overlay {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1002;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      padding: 24px 28px;
+      max-width: min(420px, calc(100vw - 32px));
+      text-align: center;
+    }
+    #welcome-overlay.visible { display: block; }
+    #welcome-overlay h2 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #1D4556;
+    }
+    #welcome-overlay p {
+      font-size: 14px;
+      color: #444;
+      margin-bottom: 18px;
+      line-height: 1.45;
+    }
+    #welcome-overlay button {
+      background: #3B7A5C;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 18px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    #welcome-overlay button:hover { background: #2f6249; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="map-dim" onclick="togglePanel()"></div>
+  <div id="add-toast">Copied!</div>
+  <div id="hover-label"></div>
+
+  <div id="welcome-overlay">
+    <h2 id="welcome-title">Welcome!</h2>
+    <p>This map is empty. Add your first tree to get started — the map will centre and zoom to your park automatically.</p>
+    <button onclick="welcomeAddFirstTree()">+ Add your first tree</button>
+  </div>
+
+  <button id="panel-toggle" onclick="togglePanel()">&#9658; Filters</button>
+
+  <div id="panel">
+    <div id="panel-header">
+      <span style="display:flex;align-items:center;gap:6px">
+        <span id="tree-count">Loading…</span>
+        <button id="filter-share" onclick="copyFilterLink()" title="Copy link to current filters">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
+      </span>
+      <button id="filter-reset" onclick="resetFilters()">Reset</button>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Scientific name</span>
+      <select id="filter-sci" onchange="resetOtherDropdowns('filter-sci'); applyFilters()">
+        <option value="">All species</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Common name</span>
+      <select id="filter-common" onchange="resetOtherDropdowns('filter-common'); applyFilters()">
+        <option value="">All common names</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Short name</span>
+      <select id="filter-short" onchange="resetOtherDropdowns('filter-short'); applyFilters()">
+        <option value="">All short names</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Seasonal interest</span>
+      <div class="month-grid" id="filter-months"></div>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">New trees</span>
+      <div class="checkbox-group" id="filter-new-tags"></div>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Tags</span>
+      <div class="checkbox-group" id="filter-tags"></div>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Condition</span>
+      <div class="checkbox-group" id="filter-conditions"></div>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Form</span>
+      <div class="checkbox-group" id="filter-forms"></div>
+    </div>
+
+    <div class="filter-section">
+      <span class="filter-label">Other</span>
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="filter-photo" onchange="applyFilters()">
+          Has photo
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="filter-no-photo" onchange="applyFilters()">
+          Lacks photo
+        </label>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <div class="add-tree-btns" id="add-tree-idle-row">
+        <button id="btn-copy-coords" onclick="enterCopyMode()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+          Copy coords
+        </button>
+        <button id="btn-add-tree-init" onclick="enterMethodSelect()">+ Add a tree</button>
+      </div>
+      <div class="add-tree-method-row" id="add-tree-method-row">
+        <button id="btn-current-location" onclick="useCurrentLocation()">&#128205; Current location</button>
+        <button id="btn-click-map" onclick="handleClickMapBtn()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg> <span id="btn-click-map-label">Click on map</span></button>
+        <button id="btn-cancel-add-tree" onclick="cancelAddTree()" title="Cancel">&#10005;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install banner -->
+  <div class="install-banner" id="install-banner" style="display:none;">
+    <div class="install-banner-content">
+      <h3 class="install-banner-title">Install</h3>
+      <p class="install-banner-text" id="install-banner-text">Add this tree map to your phone for the best experience.</p>
+      <ul class="install-banner-reason" id="install-reason">
+        <li>Removes the browser toolbar so the map fills the whole screen.</li>
+        <li>You can get back to the map more easily in the future.</li>
+      </ul>
+      <div class="install-banner-actions">
+        <button class="install-banner-why" id="install-why">Why?</button>
+        <div class="install-banner-actions-right">
+          <button class="install-banner-dismiss" id="install-dismiss">Not now</button>
+          <button class="install-banner-btn" id="install-btn"><span>Install</span> <span>&#8250;</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedback-backdrop" onclick="closeFeedbackSheet()"></div>
+  <div id="feedback-sheet">
+    <div id="feedback-sheet-handle"></div>
+    <div id="feedback-sheet-title"></div>
+    <textarea rows="4" placeholder="Your comment about this tree…"></textarea>
+    <div class="feedback-actions">
+      <button onclick="submitFeedbackSheet()">Send</button>
+      <span class="feedback-status"></span>
+      <a id="feedback-sheet-mailto" href="#" style="margin-left:auto;font-size:11px;color:#2a7ae2;text-decoration:none;white-space:nowrap;">&#9993; Send email instead</a>
+    </div>
+  </div>
+
+  <div id="add-tree-backdrop" onclick="closeAddTreeModal()"></div>
+  <div id="add-tree-modal">
+    <div id="add-tree-handle"></div>
+    <h3>Add a tree <span id="add-tree-coords-display"></span></h3>
+    <form id="add-tree-form" onsubmit="submitAddTree(event)" novalidate autocomplete="off">
+      <input type="hidden" name="lat" id="add-tree-lat">
+      <input type="hidden" name="lng" id="add-tree-lng">
+      <label>Scientific name
+        <input name="sci" type="text" list="add-tree-sci-list" placeholder="e.g. Quercus robur" autocomplete="off">
+        <datalist id="add-tree-sci-list"></datalist>
+      </label>
+      <label>Common name
+        <input name="common" type="text" placeholder="e.g. English oak">
+      </label>
+      <label>Tags
+        <input name="tags" id="add-tree-tag-input" placeholder="Add tags…">
+      </label>
+      <label>Notes
+        <textarea name="notes" rows="3" placeholder="Any observations…"></textarea>
+      </label>
+      <div class="add-tree-photos">
+        <div class="add-tree-photos-label">Photos (up to 4)</div>
+        <div class="add-tree-photo-thumbs" id="add-tree-photo-thumbs"></div>
+        <div class="add-tree-photo-buttons">
+          <label class="add-tree-photo-btn">
+            <span>📁 Choose photos</span>
+            <input type="file" accept="image/*" multiple id="add-tree-photo-pick" hidden>
+          </label>
+          <label class="add-tree-photo-btn">
+            <span>📷 Take photo</span>
+            <input type="file" accept="image/*" capture="environment" id="add-tree-photo-capture" hidden>
+          </label>
+        </div>
+      </div>
+      <div id="add-tree-extra-fields" style="display:none">
+        <div class="add-tree-year-row">
+          <label>Year planted
+            <input name="year_planted" type="text" inputmode="numeric" placeholder="e.g. 2021">
+          </label>
+          <label>Est. year planted
+            <input name="est_year_planted" type="text" inputmode="numeric" placeholder="e.g. 2015">
+          </label>
+        </div>
+        <label>Form
+          <input name="form" id="add-tree-form-input" placeholder="e.g. Standard">
+        </label>
+        <label>Condition
+          <input name="condition" id="add-tree-condition-input" placeholder="e.g. Good">
+        </label>
+      </div>
+      <div class="add-tree-more-row">
+        <button type="button" id="btn-more-fields" onclick="toggleMoreFields()">+ More fields&hellip;</button>
+        <span class="add-tree-more-hint">You can also edit the trees spreadsheet to add more data.</span>
+      </div>
+      <div class="add-tree-actions">
+        <button type="button" class="btn-cancel-modal" onclick="closeAddTreeModal()">Cancel</button>
+        <span id="add-tree-status"></span>
+        <button type="submit" id="btn-add-tree-submit">Submit</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="lightbox" onclick="handleLightboxClick(event)">
+    <button id="lightbox-close-top" onclick="closeLightbox()">&#x2715;</button>
+    <div id="lightbox-zoom-hint">Tap photo to toggle zoom level</div>
+    <div id="lightbox-spinner"></div>
+    <img id="lightbox-img" src="" referrerpolicy="no-referrer" alt="Tree photo" onclick="toggleLightboxZoom(event)"
+         onload="document.getElementById('lightbox').classList.remove('loading')"
+         onerror="document.getElementById('lightbox').classList.remove('loading')"/>
+    <div id="lightbox-bar">
+      <button class="nav" id="lightbox-prev" onclick="stepLightbox(-1)">&#8249;</button>
+      <a id="lightbox-open" href="" target="_blank" rel="noopener" referrerpolicy="no-referrer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:5px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Open in new tab
+      </a>
+      <button class="nav" id="lightbox-next" onclick="stepLightbox(1)">&#8250;</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.min.js"></script>
+  <script>
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CONFIGURATION  — edit these values to match your park.
+  // See docs/04-configure-app.md for full instructions.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const PARK_NAME        = 'Park Tree Map';
+  const PARK_SHORT_NAME  = 'Park Trees';
+  const PARK_DESCRIPTION = 'A map of the trees in our park.';
+  const CONTACT_EMAIL    = 'friends@example.org';
+
+  // Paste the ID of your Google Sheet here (the long string between
+  // /d/ and /edit in the sheet URL). The sheet must be published to the web.
+  const SHEET_ID         = 'PASTE_YOUR_SHEET_ID_HERE';
+  const SHEET_NAME       = 'Trees';
+
+  // Paste the deployed Web App URL of your Apps Script here (one URL handles
+  // all three actions: feedback, addTree, uploadPhoto).
+  const APPS_SCRIPT_URL  = 'PASTE_YOUR_APPS_SCRIPT_URL_HERE';
+
+  // Used to resolve uploaded photo paths (e.g. photos/t-abc-1.jpg) to a
+  // public URL. Format: 'owner/repo'.
+  const GITHUB_REPO      = 'owner/repo';
+  const GITHUB_BRANCH    = 'main';
+  const GITHUB_PHOTOS_BASE_URL =
+    `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/photos/`;
+
+  // Fallback map view used when the sheet has no trees yet. Once trees exist,
+  // the map auto-fits to their bounds and these are ignored.
+  const MAP_CENTER       = [51.5074, -0.1278]; // London — replace with your park
+  const MAP_ZOOM         = 17;
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Apply configured strings to the DOM.
+  document.title = PARK_NAME;
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.getElementById('install-banner-text');
+    if (banner) banner.textContent = `Add ${PARK_NAME} to your phone for the best experience.`;
+  });
+
+  // ── CSV PARSER ───────────────────────────────────────────────────────────────
+  // Handles quoted fields (RFC 4180), CRLF and LF line endings.
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i], next = text[i + 1];
+      if (inQuotes) {
+        if (ch === '"' && next === '"') { field += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { field += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { row.push(field); field = ''; }
+        else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else if (ch !== '\r') { field += ch; }
+      }
+    }
+    // Last row
+    if (row.length || field) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  // ── COLOUR MAP ───────────────────────────────────────────────────────────────
+  function hsl(h, s, l) { return `hsl(${h},${s}%,${l}%)`; }
+
+  // Assigns a distinct hue to each genus (first word of scientific name).
+  // Species and cultivars within a genus get a lightness ramp of the same hue.
+  // Hues are distributed evenly around the wheel with a 30° offset so the first
+  // alphabetical genus doesn't always land on pure red.
+  function buildColourMap(trees) {
+    const allNames = [...new Set(trees.map(t => t['Scientific name']).filter(Boolean))].sort();
+    const byGenus = {};
+    for (const name of allNames) {
+      const genus = name.split(' ')[0];
+      if (!byGenus[genus]) byGenus[genus] = [];
+      byGenus[genus].push(name);
+    }
+    const genera = Object.keys(byGenus).sort();
+    const colourMap = new Map();
+    genera.forEach((g, gi) => {
+      const hue = Math.round(((gi / Math.max(genera.length, 1)) * 360 + 30) % 360);
+      const species = byGenus[g].sort();
+      species.forEach((name, si) => {
+        const n = species.length;
+        const l = n === 1 ? 48 : Math.round(38 + (si / (n - 1)) * 22);
+        colourMap.set(name, hsl(hue, 62, l));
+      });
+    });
+    return colourMap;
+  }
+
+  // ── SVG ICONS ────────────────────────────────────────────────────────────────
+  function svgTag(content, w = 24, h = 24) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${content}</svg>`;
+  }
+
+  function circleIcon(fill) {
+    return svgTag(`<circle cx="12" cy="12" r="10" fill="${fill}" stroke="white" stroke-width="2"/>`);
+  }
+
+  function starIcon(fill) {
+    // Circle background with a 5-pointed star inside
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 7.5 : 3.2;
+      const angle = (Math.PI * i / 5) - Math.PI / 2;
+      pts.push(`${(12 + r * Math.cos(angle)).toFixed(2)},${(12 + r * Math.sin(angle)).toFixed(2)}`);
+    }
+    return svgTag(
+      `<circle cx="12" cy="12" r="10" fill="${fill}" stroke="white" stroke-width="2"/>` +
+      `<polygon points="${pts.join(' ')}" fill="white" opacity="0.9" stroke="none"/>`
+    );
+  }
+
+  function diamondIcon(fill) {
+    return svgTag(
+      `<polygon points="12,2 22,12 12,22 2,12" fill="${fill}" stroke="white" stroke-width="2" stroke-linejoin="round"/>`
+    );
+  }
+
+  function squareIcon(fill) {
+    // Slightly smaller than the circle (which spans 2–22); square spans 4–20
+    return svgTag(`<rect x="8" y="8" width="8" height="8" fill="${fill}" stroke="white" stroke-width="1.5"/>`);
+  }
+
+  function questionIcon() {
+    return svgTag(
+      `<circle cx="12" cy="12" r="10" fill="white" stroke="#aaa" stroke-width="2"/>` +
+      `<text x="12" y="17" text-anchor="middle" font-size="14" font-weight="bold" fill="#888" font-family="sans-serif">?</text>`
+    );
+  }
+
+  function makeIcon(tree, colour) {
+    const tags = parseTags(tree['Tags']);
+    const condition = (tree['Condition'] || '').trim();
+
+    let svg, anchorY = 12;
+    if (condition === 'Dead') {
+      svg = squareIcon('#888888');
+    } else if (tags.includes('TBC')) {
+      svg = questionIcon();
+    } else if (tags.includes('Highlight')) {
+      svg = starIcon(colour);
+    } else if (tags.some(isNewTag)) {
+      svg = diamondIcon(colour);
+    } else {
+      svg = circleIcon(colour);
+    }
+
+    return L.divIcon({
+      html: svg,
+      className: '',           // suppress Leaflet's default white box
+      iconSize: [24, 24],
+      iconAnchor: [12, anchorY],
+      popupAnchor: [0, -anchorY]
+    });
+  }
+
+  // ── HELPERS ──────────────────────────────────────────────────────────────────
+  function tagHue(tag) {
+    let h = 0;
+    for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) & 0xffff;
+    return h % 360;
+  }
+
+  function tagPill(tag) {
+    const hue = tagHue(tag);
+    return `<span class="tag-pill" style="background:hsl(${hue},60%,93%);color:hsl(${hue},50%,28%)">${esc(tag)}</span>`;
+  }
+
+  function parseTags(tagStr) {
+    if (!tagStr) return [];
+    return tagStr.split(',').map(t => t.trim()).filter(Boolean);
+  }
+
+  // For Google-Photos-style URLs (host googleusercontent.com), strip any existing
+  // size suffix (=w123-h456-s-no etc.) and query string, then reapply the
+  // requested size parameter.
+  function googlePhotoUrl(raw, size) {
+    const base = raw.split('?')[0].replace(/=[^/=]+$/, '');
+    return `${base}=${size}`;
+  }
+
+  // Resolve a photo reference from the Photos column. Two accepted forms:
+  //   • Full URL (https://…): used as-is, with size suffix applied if it is a
+  //     googleusercontent.com URL so we can request a thumbnail vs full-size.
+  //   • Relative path or filename: resolved to the repo's photos/ directory via
+  //     GITHUB_PHOTOS_BASE_URL. `size` is ignored for repo-hosted images.
+  function resolvePhotoUrl(raw, size) {
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const host = new URL(raw).host;
+        if (size && /googleusercontent\.com$/.test(host)) return googlePhotoUrl(raw, size);
+      } catch (e) {}
+      return raw;
+    }
+    const rel = raw.replace(/^\/+/, '').replace(/^photos\//, '');
+    return GITHUB_PHOTOS_BASE_URL + rel;
+  }
+
+  function parsePhotos(photoStr) {
+    if (!photoStr) return [];
+    return photoStr.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function calcAge(tree) {
+    const planted = parseInt(tree['Year planted']) || parseInt(tree['Est. year planted']) || null;
+    if (!planted) return null;
+    const endYear = parseInt(tree['Year died']) || new Date().getFullYear();
+    return endYear - planted;
+  }
+
+  // ── POPUP ────────────────────────────────────────────────────────────────────
+  function buildPopup(tree) {
+    // Returns a line "Label: <b>Value</b> suffix" or '' if value is empty.
+    const row = (label, value, suffix = '') =>
+      value ? `<div class="prop"><b>${esc(label)}:</b> <span>${esc(value)}${suffix ? ' ' + suffix : ''}</span></div>` : '';
+
+    const age = calcAge(tree);
+    const ageSuffix = age !== null ? `(Age: ${age})` : '';
+
+    let html = `<div class="tree-popup">`;
+    const treeRef = (tree['Ref'] || '').replace(/'/g, '\\\'');
+    html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">` +
+      `<h4 style="margin-bottom:0">${esc(tree['Scientific name'] || '(unknown)')}</h4>` +
+      `<button onclick="copyTreeLink('${treeRef}')" title="Copy link to this tree" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;color:#2a7ae2;display:flex;align-items:center">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>` +
+      `</button>` +
+    `</div>`;
+
+    const photos = parsePhotos(tree['Photos']);
+    if (photos.length) {
+      html += `<div class="photos">`;
+      const resolvedPhotos = photos.map(p => resolvePhotoUrl(p, 'w1600'));
+      const resolvedAttr = JSON.stringify(resolvedPhotos).replace(/"/g, '&quot;');
+      photos.forEach((raw, i) => {
+        const thumb = resolvePhotoUrl(raw, 'w280');
+        html += `<a href="#" data-photos="${resolvedAttr}" data-index="${i}" onclick="openLightbox(JSON.parse(this.dataset.photos), +this.dataset.index); return false;"><img src="${thumb}" loading="lazy" referrerpolicy="no-referrer" alt="Tree photo"/></a>`;
+      });
+      html += `</div>`;
+    }
+    html += row('Common name',      tree['Common name']);
+    html += row('Other names',      tree['Other names']);
+    html += row('Year planted',     tree['Year planted'],     tree['Year planted']     ? ageSuffix : '');
+    html += row('Est. year planted',tree['Est. year planted'],tree['Est. year planted'] ? ageSuffix : '');
+    html += row('Year died',        tree['Year died']);
+    html += row('Form',             tree['Form']);
+    html += row('Condition',        tree['Condition']);
+    html += row('Notes',            tree['Notes']);
+
+    const tags = parseTags(tree['Tags']);
+    if (tags.length) html += `<div class="prop"><b>Tags:</b><div class="tag-pills">${tags.map(tagPill).join('')}</div></div>`;
+    html += row('Ref',              tree['Ref']);
+    html += row('Number',           tree['Number']);
+
+    const links = [];
+    if (tree['Wikipedia'])  links.push(`<a href="${tree['Wikipedia']}"  target="_blank" rel="noopener">Wikipedia</a>`);
+    if (tree['TSO'])        links.push(`<a href="${tree['TSO']}"        target="_blank" rel="noopener">TSO</a>`);
+    if (tree['Identification']) {
+      tree['Identification'].split(',').map(u => u.trim()).filter(Boolean).forEach(url => {
+        links.push(`<a href="${url}" target="_blank" rel="noopener">ID</a>`);
+      });
+    }
+    if (tree['Google Maps link']) {
+      links.push(`<a href="${tree['Google Maps link']}" target="_blank" rel="noopener">Google Maps</a>`);
+    } else if (tree['Latitude'] && tree['Longitude']) {
+      links.push(`<a href="https://maps.google.com/?q=${tree['Latitude']},${tree['Longitude']}" target="_blank" rel="noopener">Google Maps</a>`);
+    }
+    const ref = tree['Ref'] || '';
+    const formId = `ff-${ref.replace(/\./g, '-')}`;
+    const sciName = (tree['Scientific name'] || '').replace(/'/g, '&#39;');
+    const mailSubject = encodeURIComponent(`Feedback on tree ${ref} (${tree['Scientific name'] || ''})`);
+    const mailtoHref = `mailto:${CONTACT_EMAIL}?subject=${mailSubject}`;
+    const feedback = `<a class="feedback-link" href="#" onclick="toggleFeedbackForm('${formId}'); return false;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Feedback</a>`;
+    html += `<div class="links"><span>${links.join(' &bull; ')}</span>${feedback}</div>`;
+    html += `<div class="feedback-form" id="${formId}" data-ref="${ref}" data-tree="${sciName}">
+      <textarea rows="3" placeholder="Your comment about this tree…"></textarea>
+      <div class="feedback-actions">
+        <button onclick="submitFeedback('${ref}', this.closest('.feedback-form'))">Send</button>
+        <span class="feedback-status"></span>
+        <a href="${mailtoHref}" style="margin-left:auto;font-size:11px;color:#2a7ae2;text-decoration:none;white-space:nowrap;">&#9993; Send email instead</a>
+      </div>
+    </div>`;
+
+    html += '</div>';
+    return html;
+  }
+
+  // ── FILTERS ──────────────────────────────────────────────────────────────────
+  const isNewTag = tag => /\bnew\b/i.test(tag);
+
+  function buildFilters(trees) {
+    const sciCounts = {}, commonCounts = {}, shortCounts = {};
+    const tagCounts = {}, newTagCounts = {}, condCounts = {}, formCounts = {};
+
+    for (const tree of trees) {
+      const sci   = tree['Scientific name'];
+      const com   = tree['Common name'];
+      const short = tree['Short name'];
+      const cond  = tree['Condition'];
+      const form  = tree['Form'];
+      if (sci)   sciCounts[sci]     = (sciCounts[sci]     || 0) + 1;
+      if (com)   commonCounts[com]  = (commonCounts[com]  || 0) + 1;
+      if (short) shortCounts[short] = (shortCounts[short] || 0) + 1;
+      if (cond)  condCounts[cond]   = (condCounts[cond]   || 0) + 1;
+      if (form)  formCounts[form]   = (formCounts[form]   || 0) + 1;
+      for (const tag of parseTags(tree['Tags'])) {
+        if (isNewTag(tag)) newTagCounts[tag] = (newTagCounts[tag] || 0) + 1;
+        else               tagCounts[tag]    = (tagCounts[tag]    || 0) + 1;
+      }
+    }
+
+    const fillSelect = (id, counts) => {
+      const sel = document.getElementById(id);
+      const total = Object.keys(counts).length;
+      sel.options[0].textContent = `${sel.options[0].textContent} (${total})`;
+      for (const [name, count] of Object.entries(counts).sort()) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = `${name} (${count})`;
+        sel.appendChild(opt);
+      }
+    };
+
+    const fillCheckboxes = (id, counts, cls) => {
+      const div = document.getElementById(id);
+      for (const [val, count] of Object.entries(counts).sort()) {
+        const lbl = document.createElement('label');
+        lbl.className = 'checkbox-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = cls;
+        cb.value = val;
+        cb.addEventListener('change', applyFilters);
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(` ${val} (${count})`));
+        div.appendChild(lbl);
+      }
+    };
+
+    fillSelect('filter-sci', sciCounts);
+    fillSelect('filter-common', commonCounts);
+    fillSelect('filter-short', shortCounts);
+    fillCheckboxes('filter-new-tags', newTagCounts, 'filter-tag');
+    fillCheckboxes('filter-tags',     tagCounts,    'filter-tag');
+    fillCheckboxes('filter-conditions', condCounts, 'filter-condition');
+    fillCheckboxes('filter-forms',      formCounts, 'filter-form');
+
+    const nonNativeCount = trees.filter(t => {
+      const tags = (t['Tags'] || '').split(',').map(s => s.trim()).filter(Boolean);
+      return !tags.some(tag => /\bnative\b/i.test(tag));
+    }).length;
+    // Insert Non-native checkbox directly after the Native checkbox
+    const selfSownCb = [...document.querySelectorAll('#filter-tags .filter-tag')]
+      .find(cb => /\bself.sown\b/i.test(cb.value));
+    if (selfSownCb) {
+      const hideSelfSownCount = trees.filter(t => {
+        const tags = (t['Tags'] || '').split(',').map(s => s.trim()).filter(Boolean);
+        return !tags.some(tag => /\bself.sown\b/i.test(tag));
+      }).length;
+      const lbl = document.createElement('label');
+      lbl.className = 'checkbox-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = 'filter-hide-self-sown';
+      cb.addEventListener('change', applyFilters);
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(` Hide self-sown (${hideSelfSownCount})`));
+      selfSownCb.closest('label').after(lbl);
+    }
+
+    const nativeCb = [...document.querySelectorAll('#filter-tags .filter-tag')]
+      .find(cb => /\bnative\b/i.test(cb.value));
+    if (nativeCb) {
+      const lbl = document.createElement('label');
+      lbl.className = 'checkbox-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = 'filter-non-native';
+      cb.addEventListener('change', applyFilters);
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(` Non-native (${nonNativeCount})`));
+      nativeCb.closest('label').after(lbl);
+    }
+  }
+
+  // ── SEASONAL INTEREST FILTER ─────────────────────────────────────────────────
+  const MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTH_KEYS = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const currentMonthIdx = new Date().getMonth();
+
+  (function buildMonthGrid() {
+    const grid = document.getElementById('filter-months');
+    MONTHS.forEach((mon, i) => {
+      const lbl = document.createElement('label');
+      lbl.className = 'month-btn' + (i === currentMonthIdx ? ' current' : '');
+      lbl.title = mon;
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = mon;
+      cb.addEventListener('change', () => handleMonthFilter(cb));
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(MONTH_KEYS[i]));
+      grid.appendChild(lbl);
+    });
+  })();
+
+  function handleMonthFilter(cb) {
+    document.querySelectorAll('#filter-months input').forEach(other => {
+      if (other !== cb) { other.checked = false; other.closest('.month-btn').classList.remove('selected'); }
+    });
+    cb.closest('.month-btn').classList.toggle('selected', cb.checked);
+    applyFilters();
+  }
+
+  function getSelectedMonth() {
+    return document.querySelector('#filter-months input:checked')?.value || null;
+  }
+
+  function resetOtherDropdowns(changedId) {
+    ['filter-sci', 'filter-common', 'filter-short'].forEach(id => {
+      if (id !== changedId) document.getElementById(id).selectedIndex = 0;
+    });
+  }
+
+  function matchesFilters(tree) {
+    const sciFilter    = document.getElementById('filter-sci').value;
+    const commonFilter = document.getElementById('filter-common').value;
+    const shortFilter  = document.getElementById('filter-short').value;
+    const checkedTags  = [...document.querySelectorAll('.filter-tag:checked')].map(cb => cb.value);
+    const checkedConds = [...document.querySelectorAll('.filter-condition:checked')].map(cb => cb.value);
+    const checkedForms = [...document.querySelectorAll('.filter-form:checked')].map(cb => cb.value);
+
+    if (sciFilter    && tree['Scientific name'] !== sciFilter)    return false;
+    if (commonFilter && tree['Common name']     !== commonFilter) return false;
+    if (shortFilter  && tree['Short name']      !== shortFilter)  return false;
+    if (checkedTags.length) {
+      const treeTags = parseTags(tree['Tags']);
+      if (!checkedTags.some(t => treeTags.includes(t))) return false;
+    }
+    if (checkedConds.length && !checkedConds.includes(tree['Condition'])) return false;
+    if (checkedForms.length && !checkedForms.includes(tree['Form']))      return false;
+    if (document.getElementById('filter-photo').checked    &&  !tree['Photos']) return false;
+    if (document.getElementById('filter-no-photo').checked &&   tree['Photos']) return false;
+    if (document.getElementById('filter-hide-self-sown')?.checked) {
+      const tags = parseTags(tree['Tags']);
+      if (tags.some(tag => /\bself.sown\b/i.test(tag))) return false;
+    }
+    if (document.getElementById('filter-non-native')?.checked) {
+      const tags = parseTags(tree['Tags']);
+      if (tags.some(tag => /\bnative\b/i.test(tag))) return false;
+    }
+    const selectedMonth = getSelectedMonth();
+    if (selectedMonth) {
+      const months = (tree['Months'] || '').split(',').map(m => m.trim());
+      if (!months.includes(selectedMonth)) return false;
+    }
+    return true;
+  }
+
+  function applyFilters() {
+    let count = 0;
+    markers.forEach((marker, tree) => {
+      const show = matchesFilters(tree);
+      if (show) {
+        if (!map.hasLayer(marker)) marker.addTo(map);
+        count++;
+      } else {
+        if (map.hasLayer(marker)) marker.remove();
+        const tooltip = marker.getTooltip();
+        if (tooltip && tooltip.isOpen()) marker.closeTooltip();
+      }
+    });
+    document.getElementById('tree-count').textContent =
+      `${count} tree${count !== 1 ? 's' : ''} shown`;
+  }
+
+  function buildFilterUrl() {
+    const params = new URLSearchParams();
+    const sci   = document.getElementById('filter-sci').value;
+    const common = document.getElementById('filter-common').value;
+    const short  = document.getElementById('filter-short').value;
+    if (sci)    params.set('sci',    sci);
+    if (common) params.set('common', common);
+    if (short)  params.set('short',  short);
+    const tags  = [...document.querySelectorAll('.filter-tag:checked')].map(cb => cb.value);
+    const conds = [...document.querySelectorAll('.filter-condition:checked')].map(cb => cb.value);
+    const forms = [...document.querySelectorAll('.filter-form:checked')].map(cb => cb.value);
+    if (tags.length)  params.set('tags', tags.join(','));
+    if (conds.length) params.set('cond', conds.join(','));
+    if (forms.length) params.set('form', forms.join(','));
+    if (document.getElementById('filter-photo').checked)     params.set('photo',    '1');
+    if (document.getElementById('filter-no-photo').checked)  params.set('nophoto',  '1');
+    if (document.getElementById('filter-hide-self-sown')?.checked) params.set('hidesselfsown', '1');
+    if (document.getElementById('filter-non-native')?.checked) params.set('nonnative', '1');
+    const month = getSelectedMonth();
+    if (month) params.set('month', month);
+    if (map.hasLayer(baseLayers['Satellite'])) params.set('satellite', '1');
+    const base = window.location.origin + window.location.pathname;
+    return params.toString() ? `${base}?${params}` : base;
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('add-toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  function copyFilterLink() {
+    navigator.clipboard.writeText(buildFilterUrl()).then(() => showToast('Filter link copied to clipboard'));
+  }
+
+  function copyTreeLink(ref) {
+    const url = new URL(buildFilterUrl());
+    url.searchParams.set('ref', ref);
+    navigator.clipboard.writeText(url.toString()).then(() => showToast('Tree link copied to clipboard'));
+  }
+
+  function applyUrlFilters() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.toString()) return;
+    const sci = params.get('sci');     if (sci)    document.getElementById('filter-sci').value    = sci;
+    const common = params.get('common'); if (common) document.getElementById('filter-common').value = common;
+    const short  = params.get('short');  if (short)  document.getElementById('filter-short').value  = short;
+    if (params.has('tags')) {
+      const tags = params.get('tags').split(',');
+      document.querySelectorAll('.filter-tag').forEach(cb => { if (tags.includes(cb.value)) cb.checked = true; });
+    }
+    if (params.has('cond')) {
+      const conds = params.get('cond').split(',');
+      document.querySelectorAll('.filter-condition').forEach(cb => { if (conds.includes(cb.value)) cb.checked = true; });
+    }
+    if (params.has('form')) {
+      const forms = params.get('form').split(',');
+      document.querySelectorAll('.filter-form').forEach(cb => { if (forms.includes(cb.value)) cb.checked = true; });
+    }
+    if (params.get('photo')     === '1') document.getElementById('filter-photo').checked     = true;
+    if (params.get('nophoto')   === '1') document.getElementById('filter-no-photo').checked  = true;
+    const hideSelfSownEl = document.getElementById('filter-hide-self-sown');
+    if (params.get('hidesselfsown') === '1' && hideSelfSownEl) hideSelfSownEl.checked = true;
+    const nonNativeEl = document.getElementById('filter-non-native');
+    if (params.get('nonnative')   === '1' && nonNativeEl) nonNativeEl.checked = true;
+    if (params.has('month')) {
+      const cb = document.querySelector(`#filter-months input[value="${params.get('month')}"]`);
+      if (cb) { cb.checked = true; cb.closest('.month-btn').classList.add('selected'); }
+    }
+    if (params.get('satellite') === '1') { baseLayers['Street map'].remove(); baseLayers['Satellite'].addTo(map); }
+    applyFilters();
+  }
+
+  function resetFilters() {
+    document.getElementById('filter-sci').selectedIndex   = 0;
+    document.getElementById('filter-common').selectedIndex = 0;
+    document.getElementById('filter-short').selectedIndex  = 0;
+    document.querySelectorAll('.filter-tag, .filter-condition, .filter-form, #filter-photo, #filter-no-photo, #filter-non-native, #filter-hide-self-sown')
+      .forEach(el => { el.checked = false; });
+    document.querySelectorAll('#filter-months input').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.month-btn').forEach(el => el.classList.remove('selected'));
+    applyFilters();
+  }
+
+
+  function togglePanel() {
+    const panel  = document.getElementById('panel');
+    const toggle = document.getElementById('panel-toggle');
+    const open   = panel.classList.toggle('open');
+    toggle.classList.toggle('collapsed', !open);
+    toggle.textContent = open ? '\u25b6 Filters' : '\u25c0 Filters';
+    document.getElementById('map-dim').classList.toggle('active', open);
+  }
+
+  // \u2500\u2500 WELCOME OVERLAY (empty-state) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function showWelcomeOverlay() {
+    const el = document.getElementById('welcome-overlay');
+    if (!el) return;
+    document.getElementById('welcome-title').textContent = `Welcome to ${PARK_NAME}!`;
+    el.classList.add('visible');
+  }
+
+  function hideWelcomeOverlay() {
+    const el = document.getElementById('welcome-overlay');
+    if (el) el.classList.remove('visible');
+  }
+
+  function welcomeAddFirstTree() {
+    hideWelcomeOverlay();
+    enterMethodSelect();
+  }
+
+  // ── MAP SETUP ────────────────────────────────────────────────────────────────
+  const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+  const baseLayers = {
+    'Street map': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 21,
+      maxNativeZoom: 19
+    }),
+    'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+      maxZoom: 21,
+      maxNativeZoom: 19
+    })
+  };
+
+  const map = L.map('map');
+  baseLayers['Street map'].addTo(map);
+  L.control.layers(baseLayers, null, { position: 'bottomleft' }).addTo(map);
+
+  // Map<treeObject, L.Marker>
+  const markers = new Map();
+
+  let pendingAddMarker = null; // temporary marker shown after add-tree submission
+  let tagifyInstance   = null;
+  let tagifyFormField  = null;
+  let tagifyCondition  = null;
+
+  // ── DATA LOADING ─────────────────────────────────────────────────────────────
+  async function loadData() {
+    // Clear any pending-submission marker from a previous add
+    if (pendingAddMarker) {
+      map.removeLayer(pendingAddMarker);
+      pendingAddMarker = null;
+    }
+    document.getElementById('tree-count').textContent = 'Loading…';
+
+    let text;
+    try {
+      const resp = await fetch(CSV_URL);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      text = await resp.text();
+    } catch (err) {
+      document.getElementById('tree-count').textContent = 'Failed to load data';
+      console.error('Could not fetch tree data:', err);
+      return;
+    }
+
+    const rows = parseCSV(text);
+    if (rows.length < 2) {
+      document.getElementById('tree-count').textContent = 'No data found';
+      return;
+    }
+
+    const headers = rows[0].map(h => h.trim());
+    const trees = rows.slice(1)
+      .map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = (row[i] || '').trim(); });
+        return obj;
+      })
+      .filter(t => {
+        const lat = parseFloat(t['Latitude']);
+        const lng = parseFloat(t['Longitude']);
+        return !isNaN(lat) && !isNaN(lng);
+      });
+
+    const colourMap = buildColourMap(trees);
+    const bounds = [];
+
+    for (const tree of trees) {
+      const lat = parseFloat(tree['Latitude']);
+      const lng = parseFloat(tree['Longitude']);
+      const colour = colourMap.get(tree['Scientific name']) || '#888888';
+      const icon   = makeIcon(tree, colour);
+      const marker = L.marker([lat, lng], { icon });
+      marker.bindPopup(buildPopup(tree), { maxWidth: 320 });
+      const sci = tree['Scientific name'] || '';
+      const com = tree['Common name'] || '';
+      const labelHtml = `<span class="lbl-sci">${sci}</span>${com ? `<span class="lbl-com">${com}</span>` : ''}`;
+      marker.bindTooltip(labelHtml, { permanent: true, direction: 'right', className: 'tree-label', opacity: 1, offset: [8, 0] });
+      marker.on('mouseover', () => {
+        const el = document.getElementById('hover-label');
+        el.innerHTML = labelHtml;
+        el.classList.add('visible');
+      });
+      marker.on('mouseout', () => {
+        document.getElementById('hover-label').classList.remove('visible');
+      });
+      marker.addTo(map);
+      markers.set(tree, marker);
+      bounds.push([lat, lng]);
+    }
+
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [24, 24] });
+      hideWelcomeOverlay();
+    } else {
+      map.setView(MAP_CENTER, MAP_ZOOM);
+      showWelcomeOverlay();
+    }
+
+    buildFilters(trees);
+    applyUrlFilters();
+
+    // Open popup for a specific tree if ?ref= is in the URL
+    const refParam = new URLSearchParams(window.location.search).get('ref');
+    if (refParam) {
+      for (const [tree, marker] of markers) {
+        if (tree['Ref'] === refParam) {
+          map.setView(marker.getLatLng(), Math.max(map.getZoom(), 18));
+          marker.openPopup();
+          break;
+        }
+      }
+    }
+
+    document.getElementById('tree-count').textContent =
+      `${trees.length} tree${trees.length !== 1 ? 's' : ''} shown`;
+  }
+
+  loadData();
+  // Open panel by default on desktop only
+  if (window.innerWidth > 767) {
+    const panel  = document.getElementById('panel');
+    const toggle = document.getElementById('panel-toggle');
+    panel.classList.add('open');
+    toggle.textContent = '\u25b6 Filters';
+  }
+
+  // ── LIGHTBOX ─────────────────────────────────────────────────────────────────
+  let lbPhotos = [], lbIndex = 0;
+
+  function openLightbox(photos, index) {
+    lbPhotos = photos;
+    lbIndex  = index;
+    showLightboxPhoto();
+    document.getElementById('lightbox').classList.add('open');
+  }
+
+  function showLightboxPhoto() {
+    const raw   = lbPhotos[lbIndex];
+    const large = googlePhotoUrl(raw, 'w1600');
+    const img = document.getElementById('lightbox-img');
+    img.classList.remove('zoomed');
+    document.getElementById('lightbox').classList.add('loading');
+    img.src = large;
+    document.getElementById('lightbox').classList.remove('zoomed');
+    document.getElementById('lightbox-open').href = raw;
+    document.getElementById('lightbox-prev').disabled = lbIndex === 0;
+    document.getElementById('lightbox-next').disabled = lbIndex === lbPhotos.length - 1;
+    // Hide nav buttons when there's only one photo
+    const showNav = lbPhotos.length > 1;
+    document.getElementById('lightbox-prev').style.visibility = showNav ? '' : 'hidden';
+    document.getElementById('lightbox-next').style.visibility = showNav ? '' : 'hidden';
+  }
+
+  function toggleLightboxZoom(e) {
+    e.stopPropagation();
+    const img = document.getElementById('lightbox-img');
+    const lb  = document.getElementById('lightbox');
+    const zooming = !img.classList.contains('zoomed');
+    img.classList.toggle('zoomed', zooming);
+    lb.classList.toggle('zoomed', zooming);
+  }
+
+  function stepLightbox(dir) {
+    lbIndex = Math.max(0, Math.min(lbPhotos.length - 1, lbIndex + dir));
+    showLightboxPhoto();
+  }
+
+  function closeLightbox() {
+    const img = document.getElementById('lightbox-img');
+    img.classList.remove('zoomed');
+    document.getElementById('lightbox').classList.remove('open', 'zoomed');
+    img.src = '';
+  }
+
+  function handleLightboxClick(e) {
+    // Close if clicking the backdrop (not the image or controls)
+    if (e.target === document.getElementById('lightbox')) closeLightbox();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('lightbox').classList.contains('open')) return;
+    if (e.key === 'Escape')     closeLightbox();
+    if (e.key === 'ArrowLeft')  stepLightbox(-1);
+    if (e.key === 'ArrowRight') stepLightbox(1);
+  });
+
+  // ── FEEDBACK FORM ────────────────────────────────────────────────────────────
+  function doSubmitFeedback(ref, tree, comment, btn, status, textarea, onSuccess) {
+    btn.disabled = true;
+    status.textContent = 'Sending…';
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'feedback', ref, tree, comment })
+    }).then(() => {
+      status.textContent = 'Sent — thank you!';
+      textarea.value = '';
+      btn.disabled = false;
+      if (onSuccess) onSuccess();
+    }).catch(() => {
+      status.textContent = 'Failed to send. Please try again.';
+      btn.disabled = false;
+    });
+  }
+
+  function toggleFeedbackForm(id) {
+    const form = document.getElementById(id);
+    if (!form) return;
+    if (window.innerWidth <= 767) {
+      openFeedbackSheet(form.dataset.ref, form.dataset.tree);
+    } else {
+      form.classList.toggle('open');
+      if (form.classList.contains('open')) form.querySelector('textarea').focus();
+    }
+  }
+
+  // Desktop inline form submit
+  function submitFeedback(ref, formEl) {
+    const textarea = formEl.querySelector('textarea');
+    const status   = formEl.querySelector('.feedback-status');
+    const btn      = formEl.querySelector('button');
+    const comment  = textarea.value.trim();
+    if (!comment) return;
+    doSubmitFeedback(ref, formEl.dataset.tree || '', comment, btn, status, textarea, null);
+  }
+
+  // Mobile bottom sheet
+  function openFeedbackSheet(ref, sciName) {
+    const sheet = document.getElementById('feedback-sheet');
+    sheet.dataset.ref  = ref;
+    sheet.dataset.tree = sciName;
+    document.getElementById('feedback-sheet-title').textContent = sciName || ref;
+    sheet.querySelector('textarea').value = '';
+    sheet.querySelector('.feedback-status').textContent = '';
+    const mailSubject = encodeURIComponent(`Feedback on tree ${ref} (${sciName})`);
+    document.getElementById('feedback-sheet-mailto').href =
+      `mailto:${CONTACT_EMAIL}?subject=${mailSubject}`;
+    document.getElementById('feedback-backdrop').classList.add('open');
+    sheet.classList.add('open');
+    setTimeout(() => sheet.querySelector('textarea').focus(), 320);
+  }
+
+  function closeFeedbackSheet() {
+    document.getElementById('feedback-sheet').classList.remove('open');
+    document.getElementById('feedback-backdrop').classList.remove('open');
+  }
+
+  function submitFeedbackSheet() {
+    const sheet   = document.getElementById('feedback-sheet');
+    const textarea = sheet.querySelector('textarea');
+    const status  = sheet.querySelector('.feedback-status');
+    const btn     = sheet.querySelector('button');
+    const comment = textarea.value.trim();
+    if (!comment) return;
+    doSubmitFeedback(
+      sheet.dataset.ref, sheet.dataset.tree, comment, btn, status, textarea,
+      () => setTimeout(closeFeedbackSheet, 1500)
+    );
+  }
+
+  map.on('popupclose', closeFeedbackSheet);
+
+  // ── INSTALL BANNER ───────────────────────────────────────────────────────────
+  let deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallBanner();
+  });
+
+  function shouldShowInstallBanner() {
+    if (window.innerWidth > 767) return false;
+    if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return false;
+    if (sessionStorage.getItem('install-banner-dismissed') === 'true') return false;
+    return true;
+  }
+
+  function showInstallBanner() {
+    if (!shouldShowInstallBanner()) return;
+    const b = document.getElementById('install-banner');
+    if (b) b.style.display = '';
+  }
+
+  function dismissBanner() {
+    sessionStorage.setItem('install-banner-dismissed', 'true');
+    const b = document.getElementById('install-banner');
+    if (b) b.style.display = 'none';
+  }
+
+  (function () {
+    const isIOS    = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isSafari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|Chrome/.test(navigator.userAgent);
+
+    if (isIOS && isSafari && navigator.standalone === false) showInstallBanner();
+    if (deferredPrompt) showInstallBanner();
+
+    document.getElementById('install-btn').addEventListener('click', () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; dismissBanner(); });
+      } else if (isIOS) {
+        document.querySelector('#install-banner .install-banner-content').innerHTML = `
+          <h3 class="install-banner-title">How to install</h3>
+          <div class="install-banner-ios-instructions">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B7A5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            <span>Tap the <strong>Share</strong> button in Safari, then select <strong>\u201CAdd to Home Screen\u201D</strong></span>
+          </div>
+          <div class="install-banner-actions" style="margin-top:16px;">
+            <button class="install-banner-dismiss" onclick="dismissBanner()">Got it</button>
+          </div>
+        `;
+      }
+    });
+
+    document.getElementById('install-dismiss').addEventListener('click', dismissBanner);
+
+    document.getElementById('install-why').addEventListener('click', () => {
+      const reason = document.getElementById('install-reason');
+      const btn    = document.getElementById('install-why');
+      const isVisible = reason.classList.toggle('visible');
+      btn.textContent = isVisible ? 'Hide' : 'Why?';
+    });
+  }());
+
+  // ── COPY / ADD TREE MODE ─────────────────────────────────────────────────────
+  // addTreeState: 'idle' | 'copy-mode' | 'method-select' | 'click-map-mode' | 'getting-location' | 'modal-open'
+  let addTreeState = 'idle';
+  let addMarker    = null;
+  let toastTimer   = null;
+
+  const crosshairIcon = L.divIcon({
+    className: '',
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="4" fill="rgba(192,57,43,0.2)"/>
+      <line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/>
+      <line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/>
+    </svg>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+
+  const pendingTreeIcon = L.divIcon({
+    className: '',
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+      <circle cx="12" cy="12" r="10" fill="rgba(90,158,122,0.3)" stroke="#5a9e7a" stroke-width="2" stroke-dasharray="4,3"/>
+      <line x1="12" y1="22" x2="12" y2="32" stroke="#5a9e7a" stroke-width="2"/>
+    </svg>`,
+    iconSize: [24, 32],
+    iconAnchor: [12, 32]
+  });
+
+  // ── Copy coords mode ──────────────────────────────────────────────────────────
+  function enterCopyMode() {
+    addTreeState = 'copy-mode';
+    document.getElementById('map').classList.add('add-mode');
+    document.getElementById('btn-copy-coords').classList.add('active');
+    if (window.innerWidth <= 767) {
+      const panel = document.getElementById('panel');
+      if (panel.classList.contains('open')) togglePanel();
+    }
+    showToast('Click or tap on the map to copy coordinates to clipboard');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => document.getElementById('add-toast').classList.remove('show'), 4000);
+  }
+
+  function exitCopyMode() {
+    addTreeState = 'idle';
+    document.getElementById('map').classList.remove('add-mode');
+    document.getElementById('btn-copy-coords').classList.remove('active');
+    if (addMarker) { map.removeLayer(addMarker); addMarker = null; }
+  }
+
+  // ── Add-tree method select ────────────────────────────────────────────────────
+  function enterMethodSelect() {
+    addTreeState = 'method-select';
+    document.getElementById('add-tree-idle-row').style.display = 'none';
+    document.getElementById('add-tree-method-row').classList.add('visible');
+    document.getElementById('btn-click-map-label').textContent = window.innerWidth <= 767 ? 'Tap on map' : 'Click on map';
+    document.getElementById('btn-click-map').classList.remove('active');
+  }
+
+  function cancelAddTree() {
+    addTreeState = 'idle';
+    document.getElementById('add-tree-idle-row').style.display = '';
+    document.getElementById('add-tree-method-row').classList.remove('visible');
+    document.getElementById('map').classList.remove('add-mode');
+    document.getElementById('btn-click-map').classList.remove('active');
+    if (addMarker) { map.removeLayer(addMarker); addMarker = null; }
+  }
+
+  // ── Click-on-map mode ────────────────────────────────────────────────────────
+  function handleClickMapBtn() {
+    if (addTreeState === 'click-map-mode') {
+      // Cancel click-map mode, go back to method-select
+      addTreeState = 'method-select';
+      document.getElementById('map').classList.remove('add-mode');
+      document.getElementById('btn-click-map').classList.remove('active');
+      document.getElementById('btn-click-map-label').textContent = window.innerWidth <= 767 ? 'Tap on map' : 'Click on map';
+      if (addMarker) { map.removeLayer(addMarker); addMarker = null; }
+      return;
+    }
+    addTreeState = 'click-map-mode';
+    document.getElementById('map').classList.add('add-mode');
+    document.getElementById('btn-click-map').classList.add('active');
+    document.getElementById('btn-click-map-label').textContent = 'Cancel';
+    if (window.innerWidth <= 767) {
+      const panel = document.getElementById('panel');
+      if (panel.classList.contains('open')) togglePanel();
+    }
+    showToast('Click or tap on the map to place the new tree');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => document.getElementById('add-toast').classList.remove('show'), 5000);
+  }
+
+  // ── Current location ─────────────────────────────────────────────────────────
+  function useCurrentLocation() {
+    if (!('geolocation' in navigator)) {
+      showToast('Geolocation not available on this device');
+      return;
+    }
+    const btn = document.getElementById('btn-current-location');
+    btn.textContent = 'Getting location…';
+    btn.disabled = true;
+    addTreeState = 'getting-location';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        btn.textContent = '📍 Current location';
+        btn.disabled = false;
+        const lat = pos.coords.latitude.toFixed(7);
+        const lng = pos.coords.longitude.toFixed(7);
+        openAddTreeModal(lat, lng);
+      },
+      err => {
+        btn.textContent = '📍 Current location';
+        btn.disabled = false;
+        addTreeState = 'method-select';
+        showToast('Could not get location: ' + (err.message || 'permission denied'));
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => document.getElementById('add-toast').classList.remove('show'), 4000);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+
+  // ── Modal open/close ─────────────────────────────────────────────────────────
+  function openAddTreeModal(lat, lng) {
+    addTreeState = 'modal-open';
+    document.getElementById('add-tree-form').reset();
+    if (tagifyInstance)   tagifyInstance.removeAllTags();
+    if (tagifyFormField)  tagifyFormField.removeAllTags();
+    if (tagifyCondition)  tagifyCondition.removeAllTags();
+    resetPendingPhotos();
+    document.getElementById('add-tree-lat').value = lat;
+    document.getElementById('add-tree-lng').value = lng;
+    document.getElementById('add-tree-coords-display').textContent = `${lat}, ${lng}`;
+    document.getElementById('add-tree-status').textContent = '';
+    document.getElementById('btn-add-tree-submit').disabled = false;
+    // Populate datalist with known species
+    const dl = document.getElementById('add-tree-sci-list');
+    if (!dl.children.length) {
+      const species = [...new Set([...markers.keys()].map(t => (t['Scientific name'] || '').trim()).filter(Boolean))].sort();
+      species.forEach(s => { const o = document.createElement('option'); o.value = s; dl.appendChild(o); });
+    }
+    // Tagify — Tags
+    const allTags = [...new Set([...markers.keys()].flatMap(t => parseTags(t['Tags'])))].sort();
+    if (!tagifyInstance) {
+      tagifyInstance = new Tagify(document.getElementById('add-tree-tag-input'), {
+        whitelist: allTags,
+        enforceWhitelist: false,
+        dropdown: { enabled: 0, maxItems: 100, classname: 'tags-look', closeOnSelect: false, highlightFirst: false }
+      });
+    } else {
+      tagifyInstance.settings.whitelist = allTags;
+      tagifyInstance.removeAllTags();
+    }
+    // Tagify — Form (single value)
+    const allForms = [...new Set([...markers.keys()].map(t => (t['Form'] || '').trim()).filter(Boolean))].sort();
+    if (!tagifyFormField) {
+      tagifyFormField = new Tagify(document.getElementById('add-tree-form-input'), {
+        whitelist: allForms,
+        enforceWhitelist: false,
+        maxTags: 1,
+        dropdown: { enabled: 0, maxItems: 50, classname: 'tags-look', closeOnSelect: true, highlightFirst: false }
+      });
+    } else {
+      tagifyFormField.settings.whitelist = allForms;
+      tagifyFormField.removeAllTags();
+    }
+    // Tagify — Condition (single value)
+    const allConditions = [...new Set([...markers.keys()].map(t => (t['Condition'] || '').trim()).filter(Boolean))].sort();
+    if (!tagifyCondition) {
+      tagifyCondition = new Tagify(document.getElementById('add-tree-condition-input'), {
+        whitelist: allConditions,
+        enforceWhitelist: false,
+        maxTags: 1,
+        dropdown: { enabled: 0, maxItems: 20, classname: 'tags-look', closeOnSelect: true, highlightFirst: false }
+      });
+    } else {
+      tagifyCondition.settings.whitelist = allConditions;
+      tagifyCondition.removeAllTags();
+    }
+    // Collapse extra fields on open
+    document.getElementById('add-tree-extra-fields').style.display = 'none';
+    document.getElementById('btn-more-fields').textContent = '+ More fields\u2026';
+    document.getElementById('add-tree-backdrop').classList.add('open');
+    document.getElementById('add-tree-modal').classList.add('open');
+    // Hide method row (the modal is shown instead)
+    document.getElementById('add-tree-method-row').classList.remove('visible');
+    document.getElementById('add-tree-idle-row').style.display = 'none';
+    setTimeout(() => document.querySelector('#add-tree-form input[name=sci]').focus(), 350);
+  }
+
+  function toggleMoreFields() {
+    const extra = document.getElementById('add-tree-extra-fields');
+    const btn   = document.getElementById('btn-more-fields');
+    const open  = extra.style.display === 'none';
+    extra.style.display = open ? '' : 'none';
+    btn.textContent = open ? '\u2212 Less fields\u2026' : '+ More fields\u2026';
+  }
+
+  function closeAddTreeModal() {
+    document.getElementById('add-tree-backdrop').classList.remove('open');
+    document.getElementById('add-tree-modal').classList.remove('open');
+    document.getElementById('map').classList.remove('add-mode');
+    if (addMarker) { map.removeLayer(addMarker); addMarker = null; }
+    // Return to idle
+    addTreeState = 'idle';
+    document.getElementById('add-tree-idle-row').style.display = '';
+    document.getElementById('add-tree-method-row').classList.remove('visible');
+    document.getElementById('btn-click-map').classList.remove('active');
+    document.getElementById('btn-click-map-label').textContent = window.innerWidth <= 767 ? 'Tap on map' : 'Click on map';
+  }
+
+  // ── Photo capture & upload ────────────────────────────────────────────────────
+  // Photos collected for the current add-tree submission. Each entry:
+  //   { filename: 'xxx-1.jpg', base64: '...', dataUrl: 'data:image/jpeg;base64,...' }
+  let pendingPhotos = [];
+
+  const MAX_PHOTOS = 4;
+  const MAX_PHOTO_DIMENSION = 1600;
+  const JPEG_QUALITY = 0.85;
+
+  function resetPendingPhotos() {
+    pendingPhotos = [];
+    document.getElementById('add-tree-photo-thumbs').innerHTML = '';
+    updatePhotoButtons();
+  }
+
+  function updatePhotoButtons() {
+    const full = pendingPhotos.length >= MAX_PHOTOS;
+    document.querySelectorAll('.add-tree-photo-btn').forEach(b => b.classList.toggle('disabled', full));
+  }
+
+  function renderPhotoThumbs() {
+    const grid = document.getElementById('add-tree-photo-thumbs');
+    grid.innerHTML = '';
+    pendingPhotos.forEach((p, i) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'add-tree-photo-thumb';
+      thumb.style.backgroundImage = `url('${p.dataUrl}')`;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'add-tree-photo-remove';
+      remove.textContent = '×';
+      remove.title = 'Remove photo';
+      remove.onclick = () => {
+        pendingPhotos.splice(i, 1);
+        renderPhotoThumbs();
+        updatePhotoButtons();
+      };
+      thumb.appendChild(remove);
+      grid.appendChild(thumb);
+    });
+  }
+
+  async function compressImage(file) {
+    // Resize + re-orient via createImageBitmap (respects EXIF orientation on
+    // modern browsers) and re-encode as JPEG to keep the repo lean.
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const scale = Math.min(1, MAX_PHOTO_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+    const base64 = dataUrl.split(',')[1];
+    return { dataUrl, base64 };
+  }
+
+  async function handlePhotoFiles(fileList) {
+    const files = [...fileList].filter(f => f.type.startsWith('image/'));
+    for (const file of files) {
+      if (pendingPhotos.length >= MAX_PHOTOS) break;
+      try {
+        const { dataUrl, base64 } = await compressImage(file);
+        pendingPhotos.push({ base64, dataUrl });
+      } catch (err) {
+        console.warn('Failed to process photo:', err);
+      }
+    }
+    renderPhotoThumbs();
+    updatePhotoButtons();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    ['add-tree-photo-pick', 'add-tree-photo-capture'].forEach(id => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener('change', async e => {
+        await handlePhotoFiles(e.target.files);
+        e.target.value = ''; // allow re-picking the same file
+      });
+    });
+  });
+
+  function uploadPhotoToScript(filename, base64) {
+    return fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'uploadPhoto',
+        filename,
+        base64,
+        contentType: 'image/jpeg'
+      })
+    });
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  async function submitAddTree(e) {
+    e.preventDefault();
+    const form   = document.getElementById('add-tree-form');
+    const btn    = document.getElementById('btn-add-tree-submit');
+    const status = document.getElementById('add-tree-status');
+    const lat    = document.getElementById('add-tree-lat').value;
+    const lng    = document.getElementById('add-tree-lng').value;
+    btn.disabled = true;
+
+    // Generate a client-side token used for photo filenames (the Ref column is
+    // computed by a sheet formula and the browser cannot read it back through
+    // the no-cors response — so photo names use this token instead).
+    const tok = 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    // Upload photos sequentially (one POST each — Apps Script payloads have a
+    // size limit and bundling multiple base64 photos risks hitting it).
+    const photoPaths = [];
+    for (let i = 0; i < pendingPhotos.length; i++) {
+      status.textContent = `Uploading photo ${i + 1} of ${pendingPhotos.length}…`;
+      const filename = `${tok}-${i + 1}.jpg`;
+      try {
+        await uploadPhotoToScript(filename, pendingPhotos[i].base64);
+        photoPaths.push(`photos/${filename}`);
+      } catch (err) {
+        status.textContent = `Photo ${i + 1} failed to upload — continuing without it.`;
+      }
+    }
+
+    const payload = {
+      action:           'addTree',
+      lat,
+      lng,
+      sci:              form.elements['sci'].value.trim(),
+      common:           form.elements['common'].value.trim(),
+      tags:             tagifyInstance  ? tagifyInstance.value.map(t => t.value).join(', ') : '',
+      notes:            form.elements['notes'].value.trim(),
+      year_planted:     form.elements['year_planted'].value.trim(),
+      est_year_planted: form.elements['est_year_planted'].value.trim(),
+      form_field:       tagifyFormField ? (tagifyFormField.value[0] || {}).value || '' : '',
+      condition:        tagifyCondition ? (tagifyCondition.value[0] || {}).value || '' : '',
+      photos:           photoPaths.join(', ')
+    };
+    status.textContent = 'Submitting…';
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      status.textContent = 'Submitted! Thank you.';
+      if (pendingAddMarker) map.removeLayer(pendingAddMarker);
+      pendingAddMarker = L.marker([parseFloat(lat), parseFloat(lng)], {
+        icon: pendingTreeIcon, interactive: false
+      }).addTo(map).bindTooltip('Pending: ' + (payload.sci || 'New tree'), { permanent: false });
+      setTimeout(() => closeAddTreeModal(), 1800);
+    } catch (err) {
+      status.textContent = 'Error submitting. Please try again.';
+      btn.disabled = false;
+    }
+  }
+
+  // ── Map click handler (both copy-mode and click-map-mode) ────────────────────
+  map.on('click', e => {
+    if (addTreeState === 'copy-mode') {
+      const lat = e.latlng.lat.toFixed(7);
+      const lng = e.latlng.lng.toFixed(7);
+      if (addMarker) map.removeLayer(addMarker);
+      addMarker = L.marker(e.latlng, { icon: crosshairIcon, interactive: false }).addTo(map);
+      navigator.clipboard.writeText(`${lat}\t${lng}`).then(() => {
+        showToast(`Copied: ${lat}, ${lng}`);
+        exitCopyMode();
+      });
+    } else if (addTreeState === 'click-map-mode') {
+      const lat = e.latlng.lat.toFixed(7);
+      const lng = e.latlng.lng.toFixed(7);
+      if (addMarker) map.removeLayer(addMarker);
+      addMarker = L.marker(e.latlng, { icon: crosshairIcon, interactive: false }).addTo(map);
+      openAddTreeModal(lat, lng);
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (addTreeState === 'modal-open') { closeAddTreeModal(); return; }
+    if (addTreeState === 'copy-mode') { exitCopyMode(); return; }
+    if (addTreeState === 'click-map-mode' || addTreeState === 'method-select') { cancelAddTree(); return; }
+  });
+
+  // ── USER LOCATION ────────────────────────────────────────────────────────────
+  if ('geolocation' in navigator) {
+    let locationDot      = null;
+    let accuracyCircle   = null;
+
+    navigator.geolocation.watchPosition(pos => {
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      const latlng = [lat, lng];
+
+      if (!locationDot) {
+        accuracyCircle = L.circle(latlng, {
+          radius: accuracy,
+          color: '#4a90e2',
+          fillColor: '#4a90e2',
+          fillOpacity: 0.1,
+          weight: 1,
+          interactive: false
+        }).addTo(map);
+
+        locationDot = L.circleMarker(latlng, {
+          radius: 8,
+          color: 'white',
+          weight: 2,
+          fillColor: '#4a90e2',
+          fillOpacity: 1,
+          interactive: false
+        }).addTo(map);
+      } else {
+        locationDot.setLatLng(latlng);
+        accuracyCircle.setLatLng(latlng).setRadius(accuracy);
+      }
+    }, null, { enableHighAccuracy: true });
+  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>

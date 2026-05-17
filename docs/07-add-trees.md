@@ -1,0 +1,81 @@
+# Adding & managing trees
+
+There are two ways to add trees to your map:
+
+1. **From the map** — click *"+ Add a tree"* and pick a location. Best for
+   adding trees in the field on your phone, or visually placing them.
+2. **Directly in the spreadsheet** — open your Google Sheet and type a new
+   row. Best for bulk-importing or pasting from another source.
+
+Both are fine. Both feed the same sheet.
+
+## Adding from the map
+
+1. Open your map (`https://your-username.github.io/your-repo/`).
+2. Click **"+ Add a tree"** in the filter panel (or on the welcome card if
+   the sheet is empty).
+3. Choose how to place the tree:
+   - **📍 Current location** — uses your phone's GPS. Best when standing
+     next to the tree.
+   - **Click on map** — places the tree where you click. Switch to
+     *Satellite* in the bottom-left layer control to see the canopy and place
+     accurately.
+4. Fill in the form. **Scientific name** is the most important field; the
+   rest are optional and can be added later.
+5. Optionally attach up to **4 photos**. Two ways:
+   - **📁 Choose photos** — pick from your camera roll or files.
+   - **📷 Take photo** — opens your camera (on mobile devices). After taking,
+     it goes into the same row.
+6. Click **Submit**. The form shows the upload progress. You'll see a
+   *"Submitted! Thank you."* message when the row lands in the sheet.
+
+The new tree won't appear on the map immediately — the map only loads from
+the sheet at page-load. Refresh after a few seconds and your tree will be
+there.
+
+## Adding from the spreadsheet
+
+1. Open your sheet.
+2. Type values into a new row. The `Ref` and `Google Maps link` columns will
+   fill in automatically thanks to the template formulas — leave them alone.
+3. At minimum, fill `Latitude`, `Longitude`, and `Scientific name`.
+
+## Editing trees
+
+Just edit the spreadsheet. There's no "edit" mode in the map itself.
+
+The Ref column won't change as long as you don't move the tree (it's
+derived from Latitude/Longitude).
+
+## Removing trees
+
+Either delete the row from the sheet, or — to keep history — set the tree's
+`Condition` to `Dead`. Dead trees stay on the map as grey squares so you can
+track losses over time.
+
+> ⚠️ If you delete a tree row that has uploaded photos, those photo files
+> will still be sitting in your `photos/` folder in the repo, taking up
+> space. They're not visible anywhere but they're not free either. To clean
+> them up, delete them in the GitHub web UI (open the file → trash icon →
+> commit).
+
+## Mobile-specific tips
+
+- **Camera shortcuts**: on iOS Safari, the *"Take photo"* button opens the
+  camera directly. You may need to grant Safari camera permission the first
+  time. On Android, the same button works the same way in Chrome.
+- **Install as an app**: a banner appears at the bottom of the map after a
+  few visits. Installing it (or *Add to Home Screen* on iOS) removes the
+  browser bars and gives you a real app icon.
+
+## Photo upload tips
+
+- Photos are automatically resized to a max 1600px on the longest edge and
+  re-encoded as JPEG. A typical phone photo (8 MB) ends up around 400 KB.
+- The upload is invisible to most adopters: photos are committed to your
+  GitHub repository via the Apps Script behind the scenes. If you ever need
+  to check, look in `photos/` in your repo — files are named like
+  `t-abc123-1.jpg`.
+- If a photo upload fails (network drop, expired token, etc.), the form
+  continues and submits the tree without that photo. You can re-upload later
+  by editing the spreadsheet's `Photos` cell directly.
