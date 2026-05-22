@@ -7,29 +7,29 @@ minute or two (after a refresh).
 
 ## Columns
 
-| Column                | What it's for                                                                                                       |
-|-----------------------|---------------------------------------------------------------------------------------------------------------------|
-| **Ref**               | Unique reference for each tree. **Auto-filled by a sheet formula** — don't type into this column.                   |
-| **Number**            | A human-friendly number you assign to trees (e.g. an inventory number). Optional.                                   |
-| **Scientific name**   | e.g. `Quercus robur`. The first word is the *genus*; the map colours each genus distinctly.                         |
-| **Common name**       | e.g. `English oak`.                                                                                                 |
-| **Short name**        | A shorter alternative for filtering, e.g. `Oak`.                                                                    |
-| **Other names**       | Any other names you want to show in the popup.                                                                      |
-| **Latitude**          | A decimal latitude. The "Add a tree" flow fills this in for you.                                                    |
-| **Longitude**         | A decimal longitude. Same.                                                                                          |
-| **Notes**             | Free-text observations.                                                                                             |
-| **Tags**              | Comma-separated tags. See *Special tags* below.                                                                     |
-| **Year planted**      | Used to display the tree's age.                                                                                     |
-| **Est. year planted** | Estimated planting year, when the actual year isn't known.                                                          |
-| **Year died**         | If set, the age calculation uses this as the end year instead of the current year.                                  |
-| **Form**              | e.g. *Standard*, *Multi-stem*, *Shrub*. Drives the *Form* filter.                                                   |
-| **Condition**         | e.g. *Good*, *Fair*, *Poor*, *Dead*. Drives the *Condition* filter.                                                 |
-| **Wikipedia**         | Full URL to the species' Wikipedia page. Shown as a link in the popup.                                              |
-| **TSO**               | Full URL to the species' page on [Trees and Shrubs Online](https://www.treesandshrubsonline.org).                   |
-| **Identification**    | One or more comma-separated URLs that helped identify the tree.                                                     |
-| **Months**            | Comma-separated month names when this tree has visible seasonal interest (e.g. `Apr, May` for blossom).             |
-| **Google Maps link**  | A link to the location on Google Maps. **Auto-filled by a sheet formula** — don't type into this column.            |
-| **Photos**            | Comma-separated photo references. See *Photos* below.                                                               |
+| Column                  | What it's for                                                                                                       |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------|
+| **Ref**                 | Unique reference for each tree. **Auto-filled by a sheet formula** — don't type into this column.                   |
+| **Number**              | A human-friendly number you assign to trees (e.g. an inventory number). Optional.                                   |
+| **Photos**              | Comma-separated photo references. See *Photos* below.                                                               |
+| **Scientific name**     | e.g. `Quercus robur`. The first word is the *genus*; the map colours each genus distinctly.                         |
+| **Common name**         | e.g. `English oak`.                                                                                                 |
+| **Short name**          | A shorter alternative for filtering, e.g. `Oak`.                                                                    |
+| **Other names**         | Any other names by which this tree is known you want to show in the popup.                                          |
+| **Latitude**            | A decimal latitude. The "Add a tree" flow fills this in for you.                                                    |
+| **Longitude**           | A decimal longitude. Same.                                                                                          |
+| **Notes**               | Free-text observations.                                                                                             |
+| **Tags**                | Comma-separated tags. See *Special tags* below.                                                                     |
+| **Year planted**        | Used to display the tree's age.                                                                                     |
+| **Est. year planted**   | Estimated planting year, when the actual year isn't known.                                                          |
+| **Year died**           | If set, the age calculation uses this as the end year instead of the current year.                                  |
+| **Form**                | e.g. *Standard*, *Multi-stem*, *Shrub*. Drives the *Form* filter.                                                   |
+| **Condition**           | e.g. *Good*, *Fair*, *Poor*, *Dead*. Drives the *Condition* filter.                                                 |
+| **Months**              | Comma-separated month names when this tree has visible seasonal interest (e.g. `Apr, May` for blossom).             |
+| **TSO link**            | Full URL to the species' page on [Trees and Shrubs Online](https://www.treesandshrubsonline.org).                   |
+| **Wikipedia link**      | Full URL to the species' Wikipedia page. Shown as a link in the popup.                                              |
+| **Identification link** | One or more comma-separated URLs that helped identify the tree, if different. E.g. [TreeGuideUK](https://www.treeguideuk.co.uk/) |
+| **Google Maps link**    | A link to the location on Google Maps. **Auto-filled by a sheet formula** — don't type into this column.            |
 
 ## Special tags
 
