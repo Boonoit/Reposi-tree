@@ -56,6 +56,12 @@ value is text.
 | `MAP_CENTER`         | Only matters before you add your first tree. See below.     |
 | `MAP_ZOOM`           | 17 is a sensible default for a park.                        |
 
+> 💡 **Tip about `CONTACT_EMAIL`:** this address is shown in the map
+> and so will be visible to anyone — including spam bots that scrape
+> for email addresses. It's worth using a group or forwarding address
+> (e.g. `treemap@your-friends-group.org`) rather than someone's
+> personal email.
+
 ### About `MAP_CENTER`
 
 `MAP_CENTER` is **only used when the spreadsheet has no trees yet**. As soon

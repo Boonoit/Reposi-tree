@@ -14,7 +14,8 @@ On the park-treemap repository page, click the **Fork** button (top right).
 GitHub will copy the project to your own account.
 
 You can name the fork whatever you like, e.g. `my-park-trees`. Leave the
-*"Copy the main branch only"* checkbox **ticked**.
+*"Copy the main branch only"* checkbox **ticked**, and keep the repository
+**Public**.
 
 Click **Create fork**.
 

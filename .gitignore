@@ -4,6 +4,7 @@ Thumbs.db
 *.swo
 .vscode/
 .idea/
+.claude/
 node_modules/
 
 # Planning / brief docs kept locally but not in the public repo
