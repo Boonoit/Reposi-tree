@@ -16,21 +16,21 @@ declare them anywhere.
 | `New 2025`      | Newly planted in a specific year.                          |
 | `Native`        | A native species (enables the "Non-native (hide)" filter). |
 | `Self-sown`     | Grew naturally rather than being planted by people.        |
-| `Heritage`      | Locally important / historic tree.                         |
+| `Highlight`     | Star marker — for the most notable trees in the park.      |
+| `TBC`           | Species not yet confirmed. Marker becomes a question mark. |
+| `Tree Register` | For trees listed as Champions in the [Tree Register](https://www.treeregister.org/) |
 | `Memorial`      | Planted in someone's memory.                               |
 | `Sponsored`     | Has a named sponsor or donor.                              |
-| `Veteran`       | Especially old or large specimen.                          |
-| `Notable`       | Worth pointing out for visitors.                           |
-| `Specimen`      | A particularly fine example of its species.                |
+| `Veteran`       | Especially old trees, or those showing [veteran features](https://ati.woodlandtrust.org.uk/what-we-record-and-why/what-we-record/veteran-trees/). |
 | `Avenue`        | Part of an avenue planting.                                |
 | `Hedge`         | Part of a hedge rather than a free-standing tree.          |
-| `Highlight`     | Star marker — for trees featured on tours.                 |
-| `TBC`           | Species not yet confirmed. Marker becomes a question mark. |
+| `Bird box`      | Has a bird nesting box affixed.                            |
+| `Bat box`       | Has a bat nesting box affixed.                             |
 
 > **Tip:** The `Native` and `Self-sown` tags are special — using them
 > automatically adds inverse filters to the *Other* section so visitors can
-> hide them. The `New` family is also special — the year suffix is optional
-> but lets you group new plantings by year.
+> hide them. The `New` family is also special — they get a diamond marker shape.
+> The year suffix is optional, but lets you group new plantings by year.
 
 ## Form (single value)
 
