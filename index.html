@@ -2031,7 +2031,11 @@
 
   function showLightboxPhoto() {
     const raw   = lbPhotos[lbIndex];
-    const large = googlePhotoUrl(raw, 'w1600');
+    // resolvePhotoUrl re-applies the Google Photos size suffix only when the
+    // host is googleusercontent.com; for repo-hosted URLs (raw.githubusercontent…)
+    // it returns the URL unchanged. Using googlePhotoUrl here directly would
+    // append "=w1600" to non-Google URLs and break the request.
+    const large = resolvePhotoUrl(raw, 'w1600');
     const img = document.getElementById('lightbox-img');
     img.classList.remove('zoomed');
     document.getElementById('lightbox').classList.add('loading');

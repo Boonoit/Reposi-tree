@@ -40,19 +40,25 @@ can **only** touch the one repository — much safer than a classic token.
 
 ## 3.3 Set the Script Properties
 
-The script reads three secrets from *Script Properties* — never paste them
-into the script body itself, where they'd be readable by anyone who can
-view the project.
+The script reads three values from *Script Properties* — never paste
+them into the script body itself, where they'd be readable by anyone
+who can view the project.
+
+> 💡 **These live inside Apps Script, not in your `config.js`.**
+> Some of the same names appear in both files (`SHEET_ID`,
+> `GITHUB_REPO`), but the two copies are completely separate — Apps
+> Script can't see your `config.js`, and your `config.js` can't see
+> Apps Script. **Both have to be set, with the same values.**
 
 1. Click the **gear icon** (Project Settings) in the left sidebar.
 2. Scroll to **Script Properties** and click **Edit script properties**.
 3. Add three properties:
 
-   | Property      | Value                                                |
-   |---------------|------------------------------------------------------|
-   | `SHEET_ID`    | The Sheet ID you copied in step 1.3.                 |
-   | `GITHUB_REPO` | `your-username/my-park-trees` (the owner/repo pair). |
-   | `GITHUB_TOKEN`| The `github_pat_…` token from step 3.1.              |
+   | Property      | Value                                                                                       |
+   |---------------|---------------------------------------------------------------------------------------------|
+   | `SHEET_ID`    | The Sheet ID you copied in step 1.3.                                                        |
+   | `GITHUB_REPO` | `your-username/my-park-trees` — **the full owner/repo pair, separated by a slash.** `your-username` alone won't work. |
+   | `GITHUB_TOKEN`| The `github_pat_…` token from step 3.1.                                                     |
 
 4. **Save script properties**.
 
@@ -75,8 +81,13 @@ view the project.
    **Authorize access**, choose your account, and click *Advanced → Go to
    (project name) (unsafe)* (this warning is normal for your own scripts) →
    **Allow**.
-6. After deployment, copy the **Web app URL** that ends in `/exec`. You'll
-   paste this into `config.js` in step 4.
+6. After deployment, copy the **Web app URL**. You'll paste this into
+   `config.js` in step 4.
+
+   > ⚠️ Copy the **whole URL**, not just the deployment ID. It looks like:
+   > `https://script.google.com/macros/s/AKfycb…long-string…/exec`
+   > and must start with `https://` and end with `/exec`. Just the
+   > `AKfycb…` ID on its own won't work.
 
 ## 3.5 Sanity check
 
