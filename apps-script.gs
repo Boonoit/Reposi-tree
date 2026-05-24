@@ -121,12 +121,19 @@ function handleAddTree(data) {
 
   sheet.appendRow(row);
 
-  // Sort the data range by Scientific name (ascending) so the sheet stays
-  // tidy even after the formula columns fill in.
+  // Sort the data range by Scientific name (ascending), with Common name
+  // as a tiebreaker so trees missing a Scientific name still order
+  // sensibly. Row 2 is reserved for the ARRAYFORMULA cells (Ref + Google
+  // Maps link) — moving that row would shift the array's relative
+  // reference and break the projection — so it's explicitly excluded
+  // from the sort range.
   const sciCol = col('Scientific name');
-  if (sciCol >= 0 && sheet.getLastRow() > 2) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn())
-         .sort({ column: sciCol + 1, ascending: true });
+  const comCol = col('Common name');
+  if (sciCol >= 0 && sheet.getLastRow() > 3) {
+    const sortSpec = [{ column: sciCol + 1, ascending: true }];
+    if (comCol >= 0) sortSpec.push({ column: comCol + 1, ascending: true });
+    sheet.getRange(3, 1, sheet.getLastRow() - 2, sheet.getLastColumn())
+         .sort(sortSpec);
   }
   return jsonResponse({ status: 'ok' });
 }

@@ -107,25 +107,41 @@ The map displays them in the order you list them.
 
 ## "Don't touch these"
 
-The `Ref` and `Google Maps link` columns are powered by formulas baked into
-the template spreadsheet. They use `Latitude` and `Longitude` and update
-themselves.
+The `Ref` and `Google Maps link` columns are powered by a single
+`ARRAYFORMULA` cell at the top of each column (row 2). One cell projects
+the computed value into every row of that column, so as you add trees the
+Ref and Google Maps link fields fill in automatically.
 
-If you ever see new rows appearing **without** a Ref or Google Maps link,
-the formula has been overwritten somewhere. Fix:
+**Row 2 is reserved for these formula cells.** Tree data starts at
+**row 3**. Don't:
 
-1. Find the topmost row that still has the formula working.
-2. Click the cell, copy it, and paste it down across the broken rows.
+- paste over the two ARRAYFORMULA cells in row 2,
+- type a tree's Scientific name or Common name into row 2 (it would
+  cause that row to sort away from the top and break the array
+  projection),
+- insert blank rows below row 2 to "pad" the sheet (they count as
+  "used" for the Apps Script's last-row check, so new trees end up
+  appended far below where you expect).
 
-If even row 2 is broken, copy the formula from the original template sheet.
+If a row appears **without** a Ref or Google Maps link, the
+ARRAYFORMULA cell at the top of one of the columns has been
+overwritten. Fix:
+
+1. Open the [template spreadsheet](https://docs.google.com/spreadsheets/d/1PVzp_l5RKAYZDWJrBaZ0418P7LMPQKsEIBxTov6Znd0/edit).
+2. Click cell A2 (Ref) or the corresponding cell in the Google Maps link
+   column. Copy the formula from the formula bar at the top.
+3. Paste it into the same cell in your own sheet.
+
+Only the **single cell at row 2** holds the formula — don't paste it
+down into other rows; that breaks the array projection.
 
 ## Keeping the sheet sorted
 
 The sheet is much easier to read when it's sorted by Scientific name. The
 Apps Script does this automatically every time a tree is added via the
-map's *"+ Add a tree"* button. If you ever paste rows or edit names
-**directly in the spreadsheet**, click any data cell and use **Data → Sort
-sheet → Sort sheet by column C (Scientific name) → A → Z** to tidy it up.
+map's *"+ Add a tree"* button. If you paste rows or edit names **directly
+in the spreadsheet** and want to re-tidy, click any cell and use
+**Data → Sort sheet → Sort sheet by column C (Scientific name) → A → Z**.
 
 ## Adding columns of your own
 

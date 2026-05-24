@@ -91,7 +91,9 @@ update on its own. To put everything back in order:
 1. Click any cell in the data.
 2. **Data → Sort sheet → Sort sheet by column C (Scientific name) → A → Z.**
 
-That's it — two clicks and the sheet is tidy again.
+Row 2 stays put even though it's included in the sort, because its
+Scientific name and Common name are empty (and so it sorts to the top).
+Just don't type a tree's name into row 2.
 
 ## Editing trees
 

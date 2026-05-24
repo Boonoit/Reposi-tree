@@ -94,15 +94,16 @@ Other causes:
 
 ## "Add a tree" submits but rows appear without Ref or Google Maps link
 
-Your template's formula has been overwritten somewhere.
+The ARRAYFORMULA cell at the top of the `Ref` or `Google Maps link`
+column has been overwritten. Those single cells (row 2 of each column)
+populate the whole column — if one of them is gone, no row gets a value.
 
-1. Find the topmost row that *does* still have a Ref.
-2. Click that row's `Ref` cell, copy it.
-3. Paste it into the affected rows below.
-4. Same for `Google Maps link`.
-
-If even row 2 is broken: open the template spreadsheet again, copy the
-formula from row 2 of *Trees*, paste it into your sheet.
+To fix it, open the [template spreadsheet](https://docs.google.com/spreadsheets/d/1PVzp_l5RKAYZDWJrBaZ0418P7LMPQKsEIBxTov6Znd0/edit),
+click cell A2 of the `Ref` column or the equivalent in `Google Maps
+link`, copy the formula from the formula bar, and paste it back into
+the same cell in your own sheet. See
+[docs/05 → Don't touch these](05-database-fields.md#dont-touch-these)
+for the longer version.
 
 ## The install banner doesn't appear / app won't install
 
