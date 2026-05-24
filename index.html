@@ -2696,9 +2696,14 @@
       });
       status.textContent = 'Submitted! Thank you.';
       if (pendingAddMarker) map.removeLayer(pendingAddMarker);
-      pendingAddMarker = L.marker([parseFloat(lat), parseFloat(lng)], {
+      const newLat = parseFloat(lat);
+      const newLng = parseFloat(lng);
+      pendingAddMarker = L.marker([newLat, newLng], {
         icon: pendingTreeIcon, interactive: false
       }).addTo(map).bindTooltip('Pending: ' + (payload.sci || 'New tree'), { permanent: false });
+      // Pan/zoom to the new tree so the adopter sees it, especially when the
+      // first tree drops them away from the placeholder fallback view.
+      map.flyTo([newLat, newLng], Math.max(map.getZoom(), 18), { duration: 1.0 });
       setTimeout(() => closeAddTreeModal(), 1800);
     } catch (err) {
       status.textContent = 'Error submitting. Please try again.';
