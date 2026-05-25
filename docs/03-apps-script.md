@@ -101,13 +101,12 @@ who can view the project.
    **Continue**, then **Allow** on the final summary.
 7. After deployment, copy the **Web app URL**. You'll paste this into
    `config.js` in step 4.
+<img src="screenshots/step-3-4-test-deployments.png" alt="Apps Script 'Test deployments' / Manage deployments dialog showing the Web app URL" width="300" align="right" />
 
    > ⚠️ Copy the **whole URL**, not just the deployment ID. It looks like:
    > `https://script.google.com/macros/s/AKfycb…long-string…/exec`
    > and must start with `https://` and end with `/exec`. Just the
    > `AKfycb…` ID on its own won't work.
-
-<img src="screenshots/step-3-4-test-deployments.png" alt="Apps Script 'Test deployments' / Manage deployments dialog showing the Web app URL" width="640" />
 
 ## 3.5 Sanity check
 
