@@ -32,7 +32,7 @@ can **only** touch the one repository — much safer than a classic token.
    *Repository permissions* set: **Contents**: **Read and write** (Everything else: ignore.
    GitHub will also add **Metadata** — ignore.)
    <img src="screenshots/step-3-1-github-pat-permissions.png" alt="Permissions section with Contents: Read and write and Metadata: Read-only added" width="640" />
-9. Click **Generate token**, then copy the long string starting with
+8. Click **Generate token**, then copy the long string starting with
    `github_pat_…`. **You won't be able to see it again** — copy it somewhere
    safe while you complete this step.
 
