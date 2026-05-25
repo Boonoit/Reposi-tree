@@ -86,7 +86,6 @@ who can view the project.
 
 ## 3.4 Deploy as a Web App
 
-<img src="screenshots/step-3-4-apps-script-deploy.png" align="right" width="300" alt="Apps Script 'New deployment' dialog with Web app type selected" />
 <img src="screenshots/step-3-4-deploy.png" align="right" width="300" alt="Apps Script Deploy menu" />
 
 1. Click **Deploy → New deployment** (top right).
@@ -99,17 +98,13 @@ who can view the project.
 5. The first time, Google will ask you to authorise the script. Click
    **Authorize access**, choose your account, and click *Advanced → Go to
    (project name) (unsafe)* (this warning is normal for your own scripts).
-6. A *"Select what (your-name) can access"* screen appears listing the
+7. A *"Select what (your-name) can access"* screen appears listing the
    permissions the script needs. Tick **Select all**, then click
    **Continue**, then **Allow** on the final summary.
-7. After deployment, copy the **Web app URL**. You'll paste this into
+   <img src="screenshots/step-3-4-test-deployments.png" alt="Apps Script 'Test deployments' / Manage deployments dialog showing the Web app URL" width="300" align="right" />
+9. After deployment, copy the **Web app URL**. You'll paste this into
    `config.js` in step 4.
-<img src="screenshots/step-3-4-test-deployments.png" alt="Apps Script 'Test deployments' / Manage deployments dialog showing the Web app URL" width="300" align="right" />
-
-   > ⚠️ Copy the **whole URL**, not just the deployment ID. It looks like:
-   > `https://script.google.com/macros/s/AKfycb…long-string…/exec`
-   > and must start with `https://` and end with `/exec`. Just the
-   > `AKfycb…` ID on its own won't work.
+   > ⚠️ Copy the **whole URL**, not just the deployment ID. 
 
 ## 3.5 Sanity check
 
