@@ -938,6 +938,7 @@
     <div class="info-row" id="info-website-row">Website: <a id="info-website" href="#" target="_blank" rel="noopener"></a></div>
     <div class="info-row" id="info-contact-row">Contact: <a id="info-contact" href="#"></a></div>
     <div class="info-row" id="info-sheet-row">Tree spreadsheet: <a id="info-sheet" href="#" target="_blank" rel="noopener">open in Google Sheets</a></div>
+    <div class="info-row" id="info-enrol-row">Want to add trees from this device? <a href="#" onclick="enrolDeviceManually(); return false;">Enrol this device</a></div>
     <div id="info-attribution">
       Built with <a href="https://github.com/fjordaan/park-treemap" target="_blank" rel="noopener">park-treemap</a> — a free, self-hosted tree-map template for any park's "Friends of" group.
     </div>
@@ -1221,6 +1222,29 @@
     document.body.classList.toggle('contributor', canContribute());
   }
 
+  // Manual enrolment — needed when the user can't visit the magic link
+  // in this context (e.g. inside an iOS home-screen PWA, which has its
+  // own localStorage isolated from Safari's). Accepts the full magic link
+  // OR just the bare contributor token.
+  function enrolDeviceManually() {
+    const input = prompt(
+      'Paste your magic enrolment link, or just the contributor password:'
+    );
+    if (!input) return;
+    let token = input.trim();
+    try {
+      const url = new URL(token);
+      const param = url.searchParams.get('enrol');
+      if (param) token = param;
+    } catch (e) { /* not a URL, treat as bare token */ }
+    if (!token) return;
+    try { localStorage.setItem(CONTRIB_KEY, token); } catch (e) {}
+    applyContributorGate();
+    populateInfoModal();
+    closeInfoModal();
+    showToast('Device enrolled. The +Add a tree button is now available.');
+  }
+
   // ── Map header + Info modal ─────────────────────────────────────────────────
   function populateMapHeader() {
     const t = document.getElementById('map-header-title');
@@ -1261,6 +1285,17 @@
       if (sRow) sRow.style.display = '';
     } else {
       if (sRow) sRow.style.display = 'none';
+    }
+
+    // Enrol-this-device row — shown when the gate is on and this device
+    // isn't yet enrolled. Covers the iOS home-screen-PWA case (isolated
+    // localStorage from Safari), and any other "I can't visit the magic
+    // link here" scenario.
+    const enrolRow = document.getElementById('info-enrol-row');
+    if (ENABLE_CONTRIBUTOR_GATE && !isEnrolledContributor()) {
+      if (enrolRow) enrolRow.style.display = '';
+    } else {
+      if (enrolRow) enrolRow.style.display = 'none';
     }
   }
 
