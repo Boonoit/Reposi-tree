@@ -1,12 +1,12 @@
 {
-  "name": "Park Tree Map",
-  "short_name": "Park Trees",
+  "name": "Lillie Road Recreation Ground tree map",
+  "short_name": "LRRG Trees",
   "description": "A tree map for our park.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#3B7A5C",
-  "theme_color": "#1D4556",
+  "background_color": "#ebf2e9",
+  "theme_color": "#72b058",
   "icons": [
     {
       "src": "icons/icon-192.png",
