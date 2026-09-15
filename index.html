@@ -79,6 +79,10 @@
       font-size: 12px;
       color: #555;
       font-weight: bold;
+      cursor: pointer;
+    }
+    #tree-count-number {
+      border-bottom: 1px dashed currentColor;
     }
     #filter-reset {
       font-size: 12px;
@@ -95,6 +99,36 @@
       color: #2a7ae2; display: flex; align-items: center;
     }
     #filter-share:hover { color: #1a5ab8; }
+    #filter-search-toggle {
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: #555; display: flex; align-items: center;
+    }
+    #filter-search-toggle:hover { color: #1a5ab8; }
+    #filter-search-toggle.active { color: #2a7ae2; }
+    .panel-header-separator {
+      width: 1px;
+      height: 14px;
+      background: #ddd;
+    }
+    .filter-search-wrap { position: relative; }
+    #filter-search {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 16px; /* prevent iOS zoom on focus */
+      padding: 6px 26px 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-family: inherit;
+    }
+    #filter-search-clear {
+      position: absolute;
+      top: 50%; right: 2px;
+      transform: translateY(calc(-50% - 2px));
+      background: none; border: none; cursor: pointer;
+      font-size: 18px; color: #888; line-height: 1;
+      padding: 4px 6px;
+    }
+    #filter-search-clear:hover { color: #333; }
 
     #map.add-mode { cursor: crosshair; }
 
@@ -189,6 +223,26 @@
     #add-tree-coords-display { font-size: 11px; font-weight: 400; color: #999; }
     .tree-form label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 10px; }
     .tree-form label .field-hint { display: block; font-weight: 400; font-size: 11px; color: #888; margin-bottom: 2px; }
+    .sci-name-help-wrap { margin-top: 2px; margin-bottom: 12px; }
+    .sci-name-help-toggle {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: none; border: none; padding: 0;
+      font-size: 12px; font-weight: 500; color: #5a9e7a; cursor: pointer; user-select: none;
+    }
+    .sci-name-help-toggle:hover { text-decoration: underline; }
+    .sci-name-help-arrow {
+      display: inline-block; font-size: 9px;
+      transition: transform 0.2s ease;
+    }
+    .sci-name-help-toggle.open .sci-name-help-arrow { transform: rotate(90deg); }
+    .sci-name-help-panel {
+      display: none; margin-top: 8px;
+      background: #eef7f2; border-left: 3px solid #5a9e7a; border-radius: 4px;
+      padding: 10px 12px; font-size: 12.5px; line-height: 1.55; color: #2d4a38; font-weight: 400;
+    }
+    .sci-name-help-panel.open { display: block; }
+    .sci-name-help-panel em { font-style: italic; }
+    .sci-name-help-panel code { background: rgba(0,0,0,0.07); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 12px; }
     .tree-form input[type=text],
     .tree-form select,
     .tree-form textarea {
@@ -245,7 +299,8 @@
     .add-tree-more-row { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 10px 0 4px; }
     #btn-more-fields, #btn-edit-more-fields { background: none; border: none; cursor: pointer; font-size: 12px; color: #2a7ae2; padding: 0; }
     #btn-more-fields:hover, #btn-edit-more-fields:hover { text-decoration: underline; }
-    .add-tree-more-hint { font-size: 11px; color: #aaa; }
+    .add-tree-more-hint { font-size: 11px; color: #888; }
+    .add-tree-more-hint a { color: #2a7ae2; }
     .add-tree-photos { margin: 12px 0 4px; }
     .add-tree-photos-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; }
     .add-tree-photo-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -292,10 +347,11 @@
     }
     #btn-add-tree-submit:hover, #btn-edit-tree-submit:hover { background: #d4ecdf; }
     #btn-add-tree-submit:disabled, #btn-edit-tree-submit:disabled { opacity: 0.6; cursor: default; }
-    .add-tree-actions .btn-cancel-modal {
+    .btn-cancel-modal {
       font-size: 12px; padding: 7px 14px; cursor: pointer;
       border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5;
     }
+    .btn-cancel-modal:hover { background: #e8e8e8; }
     #add-tree-status, #edit-tree-status { font-size: 12px; color: #666; margin-left: auto; }
     .btn-delete-tree {
       font-size: 12px; padding: 7px 14px; cursor: pointer;
@@ -303,6 +359,12 @@
       background: #fdf2f2; color: #c0392b;
     }
     .btn-delete-tree:hover { background: #f5d5d5; }
+    .btn-reposition-tree {
+      font-size: 12px; padding: 7px 14px; cursor: pointer;
+      border: 1px solid #2a7ae2; border-radius: 6px;
+      background: #eaf1fb; color: #2a7ae2;
+    }
+    .btn-reposition-tree:hover { background: #d5e8f7; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner {
       display: inline-block; width: 10px; height: 10px;
@@ -396,6 +458,68 @@
     .picker-option-hint {
       font-size: 12px; color: #666; line-height: 1.35;
     }
+
+    /* ── Refine tree count modal ─────────────────────────────────────────────── */
+    #tree-count-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      background: rgba(0,0,0,0.4);
+    }
+    #tree-count-backdrop.open { display: block; }
+    #tree-count-modal {
+      position: fixed;
+      z-index: 3001;
+      background: white;
+      padding: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+    @media (min-width: 768px) {
+      #tree-count-modal {
+        display: none;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 10px;
+        width: 340px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      #tree-count-modal.open { display: block; }
+    }
+    @media (max-width: 767px) {
+      #tree-count-modal {
+        bottom: 0; left: 0; right: 0;
+        border-radius: 14px 14px 0 0;
+        max-height: 85vh;
+        overflow-y: auto;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        padding-bottom: 28px;
+      }
+      #tree-count-modal.open { transform: translateY(0); }
+    }
+    #tree-count-handle {
+      width: 40px; height: 4px; background: #ddd; border-radius: 2px;
+      margin: 0 auto 16px;
+      display: none;
+    }
+    @media (max-width: 767px) { #tree-count-handle { display: block; } }
+    #tree-count-modal h3 { margin: 0 0 8px; font-size: 15px; color: #1a1a1a; }
+    #tree-count-modal .modal-subtitle { margin: 0 0 14px; font-size: 12px; line-height: 1.4; color: #777; }
+    .exclude-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+      border-top: 1px solid #eee;
+    }
+    .exclude-opt:first-child { border-top: none; }
+    .tree-count-modal-actions { margin-top: 14px; text-align: right; }
 
     /* ── Install banner ──────────────────────────────────────────────────────── */
     .install-banner {
@@ -496,6 +620,41 @@
       line-height: 1.3;
     }
     .tree-label::before { display: none; }
+    .park-marker-wrap {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .park-marker-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #2d6a2d;
+      border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      flex-shrink: 0;
+    }
+    .park-marker-label {
+      display: none;
+      background: #2d6a2d;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 3px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      margin-left: 4px;
+    }
+    #map.park-labels-visible .park-marker-label { display: block; }
+    @media (hover: hover) {
+      .park-marker-wrap:hover .park-marker-label { display: block; }
+    }
+    .park-popup { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .park-popup-icon { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+    .park-popup b { display: block; margin-bottom: 4px; }
+    .park-popup a { color: #2a7ae2; }
+    .park-popup-arrow { text-decoration: none; display: inline-block; }
 
     .section-label {
       background: none;
@@ -699,19 +858,18 @@
       max-height: calc(100dvh - 80px);
       object-fit: contain;
       display: block;
-      border-radius: 2px;
+      cursor: zoom-in;
+      touch-action: pan-y;
     }
-    @media (max-width: 767px) {
-      #lightbox-img { cursor: zoom-in; }
-      #lightbox-img.zoomed {
-        height: 100dvh;
-        max-height: 100dvh;
-        width: auto;
-        max-width: none;
-        cursor: zoom-out;
-      }
-      #lightbox.zoomed { overflow-x: auto; justify-content: flex-start; }
+    #lightbox-img.zoomed { touch-action: none; }
+    #lightbox-grad-top, #lightbox-grad-bottom {
+      position: fixed;
+      left: 0; right: 0;
+      height: 90px;
+      pointer-events: none;
     }
+    #lightbox-grad-top    { top: 0;    background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent); }
+    #lightbox-grad-bottom { bottom: 0; background: linear-gradient(to top,   rgba(0,0,0,0.55), transparent); }
     #lightbox-bar {
       display: flex;
       align-items: center;
@@ -758,18 +916,11 @@
     }
     #lightbox-close-top:hover { color: white; }
     #lightbox-zoom-hint {
-      display: none;
-    }
-    @media (max-width: 767px) {
-      #lightbox-zoom-hint {
-        display: block;
-        position: absolute;
-        top: 24px;
-        left: 16px;
-        font-size: 11px;
-        color: rgba(255,255,255,0.6);
-        pointer-events: none;
-      }
+      position: absolute;
+      top: 24px; left: 16px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      pointer-events: none;
     }
     #lightbox-spinner {
       display: none;
@@ -783,6 +934,19 @@
     }
     #lightbox.loading #lightbox-spinner { display: block; }
     #lightbox.loading #lightbox-img { opacity: 0; }
+    #lightbox-date {
+      position: fixed;
+      bottom: 60px;
+      left: 12px;
+      color: white;
+      font-size: 12px;
+      background: rgba(0,0,0,0.45);
+      padding: 3px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      display: none;
+    }
+    #lightbox-date.visible { display: block; }
     @keyframes lb-spin { to { transform: rotate(360deg); } }
 
     /* ── Map header (floating panel at top centre) ── */
@@ -902,6 +1066,29 @@
     }
     #info-attribution a { color: #2a7ae2; }
 
+    /* ── MAP LOADING INDICATOR (shown while the first tree-data fetch is in flight) ── */
+    #map-loading {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+      font-size: 14px;
+      pointer-events: none;
+    }
+    #map-loading.hidden { display: none; }
+    #map-loading-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(0,0,0,0.15);
+      border-top-color: #3B7A5C;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
     /* ── WELCOME OVERLAY (shown when the sheet has no trees yet) ── */
     #welcome-overlay {
       display: none;
@@ -942,6 +1129,7 @@
 </head>
 <body>
   <div id="map"></div>
+  <div id="map-loading"><div id="map-loading-spinner"></div><span>Loading tree data…</span></div>
   <div id="map-dim" onclick="togglePanel()"></div>
   <div id="add-toast">Copied!</div>
   <div id="hover-label"></div>
@@ -970,7 +1158,7 @@
     <div class="info-row" id="info-sheet-row">Tree spreadsheet: <a id="info-sheet" href="#" target="_blank" rel="noopener">open in Google Sheets</a></div>
     <div class="info-row" id="info-enrol-row">Want to add trees from this device? <a href="#" onclick="enrolDeviceManually(); return false;">Enrol this device</a></div>
     <div id="info-attribution">
-      Built with <a href="https://github.com/fjordaan/park-treemap" target="_blank" rel="noopener">park-treemap</a> — a free, self-hosted tree-map template for any park's "Friends of" group.
+      Built with <a href="https://parktreemap.org/" target="_blank" rel="noopener">park-treemap</a> — a free, self-hosted tree-map template for any park's "Friends of" group.
     </div>
   </div>
 
@@ -999,12 +1187,25 @@
   <div id="panel">
     <div id="panel-header">
       <span style="display:flex;align-items:center;gap:6px">
-        <span id="tree-count">Loading…</span>
+        <span id="tree-count" onclick="openTreeCountModal()">Loading…</span>
         <button id="filter-share" onclick="copyFilterLink()" title="Copy link to current filters">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </button>
       </span>
-      <button id="filter-reset" onclick="resetFilters()">Reset</button>
+      <span style="display:flex;align-items:center;gap:8px">
+        <button id="filter-search-toggle" onclick="toggleSearchFilter()" title="Search trees" aria-label="Search trees">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <span class="panel-header-separator"></span>
+        <button id="filter-reset" onclick="resetFilters()">Reset</button>
+      </span>
+    </div>
+
+    <div class="filter-section" id="filter-search-row" style="display:none">
+      <div class="filter-search-wrap">
+        <input type="text" id="filter-search" placeholder="Search trees by name or number" aria-label="Search trees by name or number" oninput="onSearchInput()">
+        <button type="button" id="filter-search-clear" onclick="closeSearchFilter()" aria-label="Close search" title="Close search">&times;</button>
+      </div>
     </div>
 
     <div class="filter-section">
@@ -1090,6 +1291,7 @@
       <ul class="install-banner-reason" id="install-reason">
         <li>Removes the browser toolbar so the map fills the whole screen.</li>
         <li>You can get back to the map more easily in the future.</li>
+        <li>Opens external links in the app so it's easy to go back to the map.</li>
       </ul>
       <div class="install-banner-actions">
         <button class="install-banner-why" id="install-why">Why?</button>
@@ -1124,6 +1326,14 @@
         <input name="sci" type="text" list="add-tree-sci-list" placeholder="e.g. Quercus robur" autocomplete="off">
         <datalist id="add-tree-sci-list"></datalist>
       </label>
+      <div class="sci-name-help-wrap">
+        <button type="button" class="sci-name-help-toggle" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open')">
+          <span class="sci-name-help-arrow">▶</span>Unsure?
+        </button>
+        <div class="sci-name-help-panel">
+          It's OK to put in a rough guess — you can always edit it later. Add <em>sp.</em> after the genus if you know the family but not the species, e.g. <em>Quercus sp.</em> for a type of oak. Add the <code>TBC</code> tag below, which will give it a special marker reminding you to identify it later.
+        </div>
+      </div>
       <label>Common name
         <input name="common" type="text" placeholder="e.g. English oak">
       </label>
@@ -1152,7 +1362,7 @@
           <label>Year planted
             <input name="year_planted" type="text" inputmode="numeric" placeholder="e.g. 2021">
           </label>
-          <label>Est. year planted
+          <label>Estimated year planted
             <input name="est_year_planted" type="text" inputmode="numeric" placeholder="e.g. 2015">
           </label>
         </div>
@@ -1199,6 +1409,9 @@
         <textarea name="notes" rows="3" placeholder="Any observations…"></textarea>
       </label>
       <div id="edit-tree-extra-fields" style="display:none">
+        <label>Other names
+          <input name="other_names" type="text" placeholder="e.g. Common oak, Pedunculate oak">
+        </label>
         <div class="add-tree-year-row">
           <label>Year planted
             <input name="year_planted" type="text" inputmode="numeric" placeholder="e.g. 2021">
@@ -1222,20 +1435,35 @@
       </div>
       <div class="add-tree-actions">
         <button type="button" class="btn-cancel-modal" onclick="closeEditTreeModal()">Cancel</button>
-        <button type="button" class="btn-delete-tree" onclick="deleteCurrentEditTree()">Delete tree</button>
+        <button type="button" class="btn-delete-tree" onclick="deleteCurrentEditTree()">Delete</button>
+        <button type="button" class="btn-reposition-tree" onclick="startReposition()">Reposition</button>
         <span id="edit-tree-status"></span>
         <button type="submit" id="btn-edit-tree-submit">Save</button>
       </div>
     </form>
   </div>
 
+  <div id="tree-count-backdrop" onclick="closeTreeCountModal()"></div>
+  <div id="tree-count-modal">
+    <div id="tree-count-handle"></div>
+    <h3>Refine tree count (currently <span id="tree-count-modal-total">0</span>)</h3>
+    <p class="modal-subtitle">Exclude categories below from the count shown on the map – trees stay visible, they're just not counted.</p>
+    <div id="tree-count-options"></div>
+    <div class="tree-count-modal-actions">
+      <button type="button" class="btn-cancel-modal" onclick="closeTreeCountModal()">Done</button>
+    </div>
+  </div>
+
   <div id="lightbox" onclick="handleLightboxClick(event)">
+    <div id="lightbox-grad-top"></div>
+    <div id="lightbox-grad-bottom"></div>
     <button id="lightbox-close-top" onclick="closeLightbox()">&#x2715;</button>
-    <div id="lightbox-zoom-hint">Tap photo to toggle zoom level</div>
+    <div id="lightbox-zoom-hint">Click or tap photo to zoom</div>
     <div id="lightbox-spinner"></div>
-    <img id="lightbox-img" src="" referrerpolicy="no-referrer" alt="Tree photo" onclick="toggleLightboxZoom(event)"
+    <div id="lightbox-date"></div>
+    <img id="lightbox-img" src="" referrerpolicy="no-referrer" alt="Tree photo" draggable="false" onclick="toggleLightboxZoom(event)"
          onload="document.getElementById('lightbox').classList.remove('loading')"
-         onerror="document.getElementById('lightbox').classList.remove('loading')"/>
+         onerror="if (!retryImgLoad(this)) document.getElementById('lightbox').classList.remove('loading')"/>
     <div id="lightbox-bar">
       <button class="nav" id="lightbox-prev" onclick="stepLightbox(-1)">&#8249;</button>
       <a id="lightbox-open" href="" target="_blank" rel="noopener" referrerpolicy="no-referrer">
@@ -1247,6 +1475,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
   <!--
     Configuration lives in config.js — the only file you need to edit when
     setting up your map. Keeping it out of index.html means future improvements
@@ -1259,8 +1489,34 @@
   const GITHUB_PHOTOS_BASE_URL =
     `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/photos/`;
 
+  // POST helper for the Apps Script backend. A plain fetch() (no
+  // mode:'no-cors') works fine against the deployed web app and its JSON
+  // response is fully readable, so real failures — bad contributor token,
+  // script errors, misconfiguration — surface here instead of failing
+  // silently the way an opaque no-cors response would.
+  async function postToScript(payload) {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok || !data || data.status !== 'ok') {
+      throw new Error((data && data.message) || `Request failed (HTTP ${res.status})`);
+    }
+    return data;
+  }
+
+  // localStorage is scoped to the origin, not the path — so sibling park
+  // maps hosted under the same GitHub Pages username (e.g. user.github.io/
+  // park-a/ and user.github.io/park-b/) share one storage bucket. Namespace
+  // every key by GITHUB_REPO so enrolling on one park's map can't leak a
+  // contributor token (or view/filter state) into another park's map.
+  const STORAGE_NS = ':' + GITHUB_REPO;
+
   // ── Trusted-contributor token (see docs/12-trusted-contributors.md) ─────────
-  const CONTRIB_KEY = 'parktreemap_contributor_token';
+  const CONTRIB_KEY = 'parktreemap_contributor_token' + STORAGE_NS;
 
   function readContributorToken() {
     try { return localStorage.getItem(CONTRIB_KEY) || ''; } catch (e) { return ''; }
@@ -1302,6 +1558,7 @@
     populateMapHeader();
     populateInfoModal();
     applyContributorGate();
+    buildTreeCountModal();
   });
 
   // Reflect contributor state into the DOM so CSS can hide gated controls.
@@ -1574,6 +1831,22 @@
     return GITHUB_PHOTOS_BASE_URL + rel;
   }
 
+  // raw.githubusercontent.com intermittently returns a transient error (seen
+  // as sporadic 503s) even though the file exists — an <img> never retries a
+  // failed load on its own, so one hiccup leaves a permanently broken photo
+  // until the whole page is reloaded. Retry a couple of times with a short
+  // backoff before giving up. Returns true if a retry was scheduled, false
+  // once attempts are exhausted (caller should treat that as a final failure).
+  function retryImgLoad(img, maxAttempts = 2) {
+    const attempt = (parseInt(img.dataset.retryAttempt || '0', 10)) + 1;
+    if (attempt > maxAttempts) return false;
+    img.dataset.retryAttempt = attempt;
+    const base = img.dataset.retryBaseSrc || img.src.split('?')[0];
+    img.dataset.retryBaseSrc = base;
+    setTimeout(() => { img.src = base + '?retry=' + attempt; }, 500 * attempt);
+    return true;
+  }
+
   function parsePhotos(photoStr) {
     if (!photoStr) return [];
     return photoStr.split(',').map(s => s.trim()).filter(Boolean);
@@ -1638,7 +1911,7 @@
         const deleteOverlay = showDelete
           ? `<button type="button" class="photo-delete" title="Remove this photo" onclick="event.stopPropagation(); deletePhotoFromTree('${refAttr}', '${pathAttr}'); return false;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`
           : '';
-        html += `<div class="photo-thumb-wrap"><a class="photo-thumb-link" href="#" data-photos="${resolvedAttr}" data-index="${i}" onclick="openLightbox(JSON.parse(this.dataset.photos), +this.dataset.index); return false;"><img src="${thumb}" loading="lazy" referrerpolicy="no-referrer" alt="Tree photo"/></a>${deleteOverlay}</div>`;
+        html += `<div class="photo-thumb-wrap"><a class="photo-thumb-link" href="#" data-photos="${resolvedAttr}" data-index="${i}" onclick="openLightbox(JSON.parse(this.dataset.photos), +this.dataset.index); return false;"><img src="${thumb}" loading="lazy" referrerpolicy="no-referrer" alt="Tree photo" onerror="retryImgLoad(this)"/></a>${deleteOverlay}</div>`;
       });
       if (canAddPhoto) {
         html += `<button type="button" class="photo-add-slot" title="Add a photo to this tree" onclick="addPhotoToExistingTree('${refAttr}'); return false;"><span class="photo-add-slot-icon">+📷</span><span class="photo-add-slot-label">Add photo</span></button>`;
@@ -1650,7 +1923,7 @@
     if (sciVal) html += row('Common name', comVal);
     html += row('Other names',      tree['Other names']);
     html += row('Year planted',     tree['Year planted'],     tree['Year planted']     ? ageSuffix : '');
-    html += row('Est. year planted',tree['Est. year planted'],tree['Est. year planted'] ? ageSuffix : '');
+    html += row('Estimated year planted',tree['Est. year planted'],tree['Est. year planted'] ? ageSuffix : '');
     html += row('Year died',        tree['Year died']);
     html += row('Form',             tree['Form']);
     html += row('Condition',        tree['Condition']);
@@ -1722,14 +1995,19 @@
     };
 
     for (const tree of trees) {
+      // Condition/Form counts always reflect the true total (see
+      // isRefineExcluded) — everything else here is a plain narrowing
+      // filter, so its count should match what "Refine tree count"
+      // currently excludes from the headline total.
+      if (tree['Condition']) bump(condBuckets, tree['Condition']);
+      if (tree['Form'])      bump(formBuckets, tree['Form']);
+      if (isRefineExcluded(tree)) continue;
       const sci   = tree['Scientific name'];
       const com   = tree['Common name'];
       const short = tree['Short name'];
       if (sci)   sciCounts[sci]     = (sciCounts[sci]     || 0) + 1;
       if (com)   commonCounts[com]  = (commonCounts[com]  || 0) + 1;
       if (short) shortCounts[short] = (shortCounts[short] || 0) + 1;
-      if (tree['Condition']) bump(condBuckets, tree['Condition']);
-      if (tree['Form'])      bump(formBuckets, tree['Form']);
       for (const tag of parseTags(tree['Tags'])) {
         bump(isNewTag(tag) ? newTagBuckets : tagBuckets, tag);
       }
@@ -1791,15 +2069,18 @@
     showIf('filter-section-forms',      Object.keys(formBuckets).length   > 0);
 
     // Insert "Non-native (hide)" filter after the Native checkbox, and a
-    // "Hide self-sown" filter after the Self-sown checkbox.
-    const nonNativeCount = trees.filter(t => {
+    // "Hide self-sown" filter after the Self-sown checkbox. Both are
+    // exclude-style toggles like "Refine tree count", so their counts
+    // should reflect what's currently excluded from the headline total too.
+    const countableTrees = trees.filter(t => !isRefineExcluded(t));
+    const nonNativeCount = countableTrees.filter(t => {
       const tags = parseTags(t['Tags']);
       return !tags.some(tag => /\bnative\b/i.test(tag));
     }).length;
     const selfSownCb = [...document.querySelectorAll('#filter-tags .filter-tag')]
       .find(cb => /\bself.sown\b/i.test(cb.value));
     if (selfSownCb) {
-      const hideSelfSownCount = trees.filter(t => {
+      const hideSelfSownCount = countableTrees.filter(t => {
         const tags = parseTags(t['Tags']);
         return !tags.some(tag => /\bself.sown\b/i.test(tag));
       }).length;
@@ -1868,6 +2149,32 @@
     });
   }
 
+  const EXCLUDE_FILTERS_KEY = 'park-treemap-exclude-filters' + STORAGE_NS;
+
+  const EXCLUDE_OPTIONS = [
+    { key: 'deadCondition', label: 'Exclude Condition: Dead', match: t => tagKey(t['Condition']) === 'dead',
+      conflictsWhen: () => [...document.querySelectorAll('.filter-condition:checked')].some(cb => tagKey(cb.value) === 'dead') },
+    { key: 'shrubForm',     label: 'Exclude Form: Shrub',     match: t => tagKey(t['Form']) === 'shrub',
+      conflictsWhen: () => [...document.querySelectorAll('.filter-form:checked')].some(cb => tagKey(cb.value) === 'shrub') },
+    { key: 'bushForm',      label: 'Exclude Form: Bush',      match: t => tagKey(t['Form']) === 'bush',
+      conflictsWhen: () => [...document.querySelectorAll('.filter-form:checked')].some(cb => tagKey(cb.value) === 'bush') },
+    { key: 'hedgeForm',     label: 'Exclude Form: Hedge',     match: t => tagKey(t['Form']) === 'hedge',
+      conflictsWhen: () => [...document.querySelectorAll('.filter-form:checked')].some(cb => tagKey(cb.value) === 'hedge') },
+  ];
+  const excludeFilters = { deadCondition: true, shrubForm: false, bushForm: false, hedgeForm: false };
+  try {
+    Object.assign(excludeFilters, JSON.parse(localStorage.getItem(EXCLUDE_FILTERS_KEY) || '{}'));
+  } catch (e) {}
+
+  // Whether a tree is currently hidden from the tree-count total by a
+  // "Refine tree count" exclude setting (e.g. the default Exclude Dead).
+  // Condition/Form counts deliberately ignore this — checking "Dead" or
+  // "Shrub" auto-disables the conflicting exclude setting (see
+  // conflictsWhen above), so their counts should reflect the true total.
+  function isRefineExcluded(tree) {
+    return EXCLUDE_OPTIONS.some(opt => excludeFilters[opt.key] && opt.match(tree));
+  }
+
   function matchesFilters(tree) {
     const sciFilter    = document.getElementById('filter-sci').value;
     const commonFilter = document.getElementById('filter-common').value;
@@ -1879,6 +2186,14 @@
     if (sciFilter    && tree['Scientific name'] !== sciFilter)    return false;
     if (commonFilter && tree['Common name']     !== commonFilter) return false;
     if (shortFilter  && tree['Short name']      !== shortFilter)  return false;
+    const searchTerm = document.getElementById('filter-search').value.trim().toLowerCase();
+    if (searchTerm) {
+      const haystack = [
+        tree['Ref'], tree['Number'], tree['Scientific name'],
+        tree['Common name'], tree['Short name'], tree['Other names']
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(searchTerm)) return false;
+    }
     if (checkedTags.length) {
       const treeTagKeys = parseTags(tree['Tags']).map(tagKey);
       if (!checkedTags.some(t => treeTagKeys.includes(t))) return false;
@@ -1904,20 +2219,31 @@
   }
 
   function applyFilters() {
+    let excludeChanged = false;
+    EXCLUDE_OPTIONS.forEach(opt => {
+      if (excludeFilters[opt.key] && opt.conflictsWhen?.()) {
+        excludeFilters[opt.key] = false;
+        const cb = document.getElementById(`exclude-opt-${opt.key}`);
+        if (cb) cb.checked = false;
+        excludeChanged = true;
+      }
+    });
+    if (excludeChanged) localStorage.setItem(EXCLUDE_FILTERS_KEY, JSON.stringify(excludeFilters));
     let count = 0;
     markers.forEach((marker, tree) => {
       const show = matchesFilters(tree);
       if (show) {
         if (!map.hasLayer(marker)) marker.addTo(map);
-        count++;
+        if (!isRefineExcluded(tree)) count++;
       } else {
         if (map.hasLayer(marker)) marker.remove();
         const tooltip = marker.getTooltip();
         if (tooltip && tooltip.isOpen()) marker.closeTooltip();
       }
     });
-    document.getElementById('tree-count').textContent =
-      `${count} tree${count !== 1 ? 's' : ''} shown`;
+    document.getElementById('tree-count').innerHTML =
+      `<span id="tree-count-number">${count}</span> tree${count !== 1 ? 's' : ''} shown`;
+    if (document.getElementById('tree-count-modal')?.classList.contains('open')) updateTreeCountModal();
     updateLabels();
   }
 
@@ -1947,6 +2273,8 @@
     if (sci)    params.set('sci',    sci);
     if (common) params.set('common', common);
     if (short)  params.set('short',  short);
+    const search = document.getElementById('filter-search').value.trim();
+    if (search) params.set('search', search);
     const tags  = [...document.querySelectorAll('.filter-tag:checked')].map(cb => cb.value);
     const conds = [...document.querySelectorAll('.filter-condition:checked')].map(cb => cb.value);
     const forms = [...document.querySelectorAll('.filter-form:checked')].map(cb => cb.value);
@@ -1998,6 +2326,11 @@
     const sci = params.get('sci');     if (sci)    document.getElementById('filter-sci').value    = sci;
     const common = params.get('common'); if (common) document.getElementById('filter-common').value = common;
     const short  = params.get('short');  if (short)  document.getElementById('filter-short').value  = short;
+    const search = params.get('search');
+    if (search) {
+      document.getElementById('filter-search').value = search;
+      openSearchFilter();
+    }
     if (params.has('tags')) {
       const tags = params.get('tags').split(',').map(tagKey);
       document.querySelectorAll('.filter-tag').forEach(cb => { if (tags.includes(cb.value)) cb.checked = true; });
@@ -2033,9 +2366,85 @@
       .forEach(el => { el.checked = false; });
     document.querySelectorAll('#filter-months input').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.month-btn').forEach(el => el.classList.remove('selected'));
+    closeSearchFilter();
     applyFilters();
   }
 
+  // ── Free-text search filter ─────────────────────────────────────────────────
+  let searchDebounceTimer = null;
+
+  function openSearchFilter() {
+    document.getElementById('filter-search-row').style.display = '';
+    document.getElementById('filter-search-toggle').classList.add('active');
+    document.getElementById('filter-search').focus();
+  }
+
+  function closeSearchFilter() {
+    document.getElementById('filter-search-row').style.display = 'none';
+    document.getElementById('filter-search-toggle').classList.remove('active');
+    const input = document.getElementById('filter-search');
+    if (input.value) { input.value = ''; applyFilters(); }
+  }
+
+  function toggleSearchFilter() {
+    const isOpen = document.getElementById('filter-search-row').style.display !== 'none';
+    if (isOpen) closeSearchFilter(); else openSearchFilter();
+  }
+
+  function onSearchInput() {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(applyFilters, 120);
+  }
+
+  function buildTreeCountModal() {
+    const container = document.getElementById('tree-count-options');
+    EXCLUDE_OPTIONS.forEach(opt => {
+      const row = document.createElement('label');
+      row.className = 'exclude-opt';
+      row.innerHTML =
+        `<input type="checkbox" id="exclude-opt-${opt.key}"${excludeFilters[opt.key] ? ' checked' : ''}>` +
+        `<span id="exclude-text-${opt.key}"></span>`;
+      row.querySelector('input').onchange = (e) => {
+        excludeFilters[opt.key] = e.target.checked;
+        localStorage.setItem(EXCLUDE_FILTERS_KEY, JSON.stringify(excludeFilters));
+        applyFilters();
+      };
+      container.appendChild(row);
+    });
+  }
+
+  function updateTreeCountModal() {
+    document.getElementById('tree-count-modal-total').textContent =
+      document.getElementById('tree-count-number')?.textContent ?? '0';
+    EXCLUDE_OPTIONS.forEach(opt => {
+      const otherTrees = [];
+      markers.forEach((marker, tree) => {
+        if (!matchesFilters(tree)) return;
+        if (EXCLUDE_OPTIONS.some(o => o.key !== opt.key && excludeFilters[o.key] && o.match(tree))) return;
+        otherTrees.push(tree);
+      });
+      const x = otherTrees.filter(opt.match).length;
+      const textEl = document.getElementById(`exclude-text-${opt.key}`);
+      if (excludeFilters[opt.key]) {
+        textEl.textContent = `${opt.label} (${x})`;
+      } else {
+        const y = otherTrees.length - x;
+        textEl.textContent = `${opt.label} (${x}): ${y}`;
+      }
+    });
+  }
+
+  function openTreeCountModal() {
+    if (!markers.size) return;
+    document.getElementById('tree-count-backdrop').classList.add('open');
+    document.getElementById('tree-count-modal').classList.add('open');
+    updateTreeCountModal();
+  }
+
+  function closeTreeCountModal() {
+    document.getElementById('tree-count-backdrop').classList.remove('open');
+    document.getElementById('tree-count-modal').classList.remove('open');
+  }
 
   function togglePanel() {
     const panel  = document.getElementById('panel');
@@ -2111,7 +2520,7 @@
   // Cache the last-fitted view in localStorage so repeat visits open right
   // where the trees actually are, avoiding a jarring flash from MAP_CENTER
   // (which is a placeholder until adopters update it).
-  const VIEW_CACHE_KEY = 'parktreemap_last_view';
+  const VIEW_CACHE_KEY = 'parktreemap_last_view' + STORAGE_NS;
   function readCachedView() {
     try {
       const raw = localStorage.getItem(VIEW_CACHE_KEY);
@@ -2141,6 +2550,10 @@
   // Map<treeObject, L.Marker>
   const markers = new Map();
 
+  const parkMarkerLayer = L.layerGroup();
+  const PARK_ZOOM_THRESHOLD = 19;  // dot visible below this zoom level
+  const PARK_LABEL_THRESHOLD = 18; // label visible below this zoom level (zoom 17 and below)
+
   let pendingAddMarker = null; // temporary marker shown after add-tree submission
   let tagifyInstance   = null;
   let tagifyFormField  = null;
@@ -2150,13 +2563,16 @@
   let tagifyEditCondition = null;
 
   // ── DATA LOADING ─────────────────────────────────────────────────────────────
-  async function loadData() {
-    // Clear any pending-submission marker from a previous add
-    if (pendingAddMarker) {
-      map.removeLayer(pendingAddMarker);
-      pendingAddMarker = null;
+  async function loadData(opts = {}) {
+    const silent = opts.silent || false;
+    if (!silent) {
+      // Clear any pending-submission marker from a previous add
+      if (pendingAddMarker) {
+        map.removeLayer(pendingAddMarker);
+        pendingAddMarker = null;
+      }
+      document.getElementById('tree-count').textContent = 'Loading…';
     }
-    document.getElementById('tree-count').textContent = 'Loading…';
 
     let text;
     try {
@@ -2164,16 +2580,20 @@
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       text = await resp.text();
     } catch (err) {
-      document.getElementById('tree-count').textContent = 'Failed to load data';
-      console.error('Could not fetch tree data:', err);
-      showDataErrorOverlay(err);
-      return;
+      if (!silent) {
+        document.getElementById('map-loading').classList.add('hidden');
+        document.getElementById('tree-count').textContent = 'Failed to load data';
+        console.error('Could not fetch tree data:', err);
+        showDataErrorOverlay(err);
+      }
+      return null;
     }
+    if (!silent) document.getElementById('map-loading').classList.add('hidden');
 
     const rows = parseCSV(text);
     if (rows.length < 2) {
-      document.getElementById('tree-count').textContent = 'No data found';
-      return;
+      if (!silent) document.getElementById('tree-count').textContent = 'No data found';
+      return null;
     }
 
     const headers = rows[0].map(h => h.trim());
@@ -2191,6 +2611,9 @@
 
     const colourMap = buildColourMap(trees);
     const bounds = [];
+
+    for (const marker of markers.values()) map.removeLayer(marker);
+    markers.clear();
 
     for (const tree of trees) {
       const lat = parseFloat(tree['Latitude']);
@@ -2217,34 +2640,85 @@
       bounds.push([lat, lng]);
     }
 
-    if (bounds.length) {
-      map.fitBounds(bounds, { padding: [24, 24] });
-      hideWelcomeOverlay();
-      writeCachedView();
-    } else {
-      map.setView(MAP_CENTER, MAP_ZOOM);
-      showWelcomeOverlay();
+    if (!silent) {
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [24, 24] });
+        hideWelcomeOverlay();
+        writeCachedView();
+      } else {
+        map.setView(MAP_CENTER, MAP_ZOOM);
+        showWelcomeOverlay();
+      }
     }
 
-    buildFilters(trees);
-    applyUrlFilters();
+    if (!silent) buildFilters(trees);
+    if (!silent) applyUrlFilters();
     updateLabels();
 
-    // Open popup for a specific tree if ?ref= is in the URL
-    const refParam = new URLSearchParams(window.location.search).get('ref');
-    if (refParam) {
-      for (const [tree, marker] of markers) {
-        if (tree['Ref'] === refParam) {
-          map.setView(marker.getLatLng(), Math.max(map.getZoom(), 18));
-          marker.openPopup();
-          break;
+    if (!silent) {
+      // Open popup for a specific tree if ?ref= is in the URL
+      const refParam = new URLSearchParams(window.location.search).get('ref');
+      if (refParam) {
+        for (const [tree, marker] of markers) {
+          if (tree['Ref'] === refParam) {
+            map.setView(marker.getLatLng(), Math.max(map.getZoom(), 18));
+            marker.openPopup();
+            break;
+          }
         }
       }
     }
 
-    document.getElementById('tree-count').textContent =
-      `${trees.length} tree${trees.length !== 1 ? 's' : ''} shown`;
+    if (!silent) applyFilters();
+    return trees;
   }
+
+  // ── NEARBY PARKS ─────────────────────────────────────────────────────────────
+  function updateParkMarkersVisibility() {
+    const zoom = map.getZoom();
+    if (zoom < PARK_ZOOM_THRESHOLD) {
+      if (!map.hasLayer(parkMarkerLayer)) parkMarkerLayer.addTo(map);
+    } else {
+      if (map.hasLayer(parkMarkerLayer)) parkMarkerLayer.remove();
+    }
+    map.getContainer().classList.toggle('park-labels-visible', zoom < PARK_LABEL_THRESHOLD);
+  }
+
+  function buildParkMarkers(parks) {
+    const currentUrl = (window.location.origin + window.location.pathname).replace(/\/+$/, '/');
+    parks.forEach(park => {
+      if (!park.lat || !park.lng || !park.url || !park.name) return;
+      if (park.url.replace(/\/+$/, '/') === currentUrl) return;
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="park-marker-wrap"><div class="park-marker-dot"></div><span class="park-marker-label">${esc(park.name)}</span></div>`,
+        iconSize: null,
+        iconAnchor: [9, 9]
+      });
+      const marker = L.marker([park.lat, park.lng], { icon });
+      const iconUrl = new URL('icons/icon-192.png', park.url).href;
+      marker.bindPopup(
+        `<div class="park-popup">` +
+          `<img class="park-popup-icon" src="${esc(iconUrl)}" alt="" onerror="this.remove()">` +
+          `<div><b>${esc(park.name)}</b><a href="${esc(park.url)}" target="_blank" rel="noopener">Open map <span class="park-popup-arrow">↗</span></a></div>` +
+        `</div>`
+      );
+      parkMarkerLayer.addLayer(marker);
+    });
+  }
+
+  async function loadParkRegistry() {
+    try {
+      const resp = await fetch('https://raw.githubusercontent.com/fjordaan/park-treemap/main/registry.json');
+      if (!resp.ok) return;
+      const parks = await resp.json();
+      buildParkMarkers(parks);
+      updateParkMarkersVisibility();
+    } catch (e) {}
+  }
+
+  map.on('zoomend', updateParkMarkersVisibility);
+  loadParkRegistry();
 
   loadData();
   // Open panel by default on desktop only
@@ -2265,6 +2739,34 @@
     document.getElementById('lightbox').classList.add('open');
   }
 
+  function lbSetOverlaysFixed(fixed) {
+    const closeBtn = document.getElementById('lightbox-close-top');
+    const hint     = document.getElementById('lightbox-zoom-hint');
+    const bar      = document.getElementById('lightbox-bar');
+    if (fixed) {
+      closeBtn.style.position = 'fixed';
+      hint.style.position     = 'fixed';
+      bar.style.position = 'fixed';
+      bar.style.bottom = '0';
+      bar.style.left   = '0';
+      bar.style.right  = '0';
+    } else {
+      closeBtn.style.position = hint.style.position = '';
+      bar.style.position = bar.style.bottom = bar.style.left = bar.style.right = '';
+    }
+  }
+
+  function lbResetZoom() {
+    const img = document.getElementById('lightbox-img');
+    const lb  = document.getElementById('lightbox');
+    img.classList.remove('zoomed');
+    img.style.width = img.style.height = img.style.maxWidth = img.style.maxHeight = img.style.cursor = '';
+    lb.classList.remove('zoomed');
+    lb.style.overflow = lb.style.alignItems = lb.style.justifyContent = lb.style.padding = '';
+    document.getElementById('lightbox-zoom-hint').textContent = 'Click or tap photo to zoom';
+    lbSetOverlaysFixed(false);
+  }
+
   function showLightboxPhoto() {
     const raw   = lbPhotos[lbIndex];
     // resolvePhotoUrl re-applies the Google Photos size suffix only when the
@@ -2273,10 +2775,26 @@
     // append "=w1600" to non-Google URLs and break the request.
     const large = resolvePhotoUrl(raw, 'w1600');
     const img = document.getElementById('lightbox-img');
-    img.classList.remove('zoomed');
+    lbResetZoom();
     document.getElementById('lightbox').classList.add('loading');
+    delete img.dataset.retryAttempt;
+    delete img.dataset.retryBaseSrc;
     img.src = large;
-    document.getElementById('lightbox').classList.remove('zoomed');
+    const dateEl = document.getElementById('lightbox-date');
+    dateEl.classList.remove('visible');
+    if (large.includes('raw.githubusercontent.com')) {
+      const capturedIndex = lbIndex;
+      (async () => {
+        try {
+          const meta = await exifr.parse(large, ['DateTimeOriginal']);
+          if (lbIndex !== capturedIndex) return;
+          if (meta?.DateTimeOriginal instanceof Date) {
+            dateEl.textContent = formatPhotoDate(meta.DateTimeOriginal);
+            dateEl.classList.add('visible');
+          }
+        } catch (e) {}
+      })();
+    }
     document.getElementById('lightbox-open').href = raw;
     document.getElementById('lightbox-prev').disabled = lbIndex === 0;
     document.getElementById('lightbox-next').disabled = lbIndex === lbPhotos.length - 1;
@@ -2286,14 +2804,92 @@
     document.getElementById('lightbox-next').style.visibility = showNav ? '' : 'hidden';
   }
 
+  let lbDragDist = 0, lbPointerOrigin = null;
+  let lbDragging = false, lbDragStart = null, lbScrollStart = null;
+
   function toggleLightboxZoom(e) {
     e.stopPropagation();
+    if (lbDragDist > 5) return;
     const img = document.getElementById('lightbox-img');
     const lb  = document.getElementById('lightbox');
-    const zooming = !img.classList.contains('zoomed');
-    img.classList.toggle('zoomed', zooming);
-    lb.classList.toggle('zoomed', zooming);
+    if (img.classList.contains('zoomed')) {
+      lbResetZoom();
+    } else {
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      if (!nw) return;
+      img.style.width     = nw + 'px';
+      img.style.height    = nh + 'px';
+      img.style.maxWidth  = 'none';
+      img.style.maxHeight = 'none';
+      img.style.cursor    = 'grab';
+      lb.style.overflow       = 'auto';
+      lb.style.alignItems     = 'flex-start';
+      lb.style.justifyContent = 'flex-start';
+      img.classList.add('zoomed');
+      lb.classList.add('zoomed');
+      lbSetOverlaysFixed(true);
+      document.getElementById('lightbox-zoom-hint').textContent = 'Click or tap to zoom out, drag to pan';
+      const padH = Math.max(0, (lb.clientWidth  - nw) / 2);
+      const padV = Math.max(0, (lb.clientHeight - nh) / 2);
+      lb.style.padding = `${padV}px ${padH}px`;
+      lb.scrollLeft = Math.max(0, (nw - lb.clientWidth)  / 2);
+      lb.scrollTop  = Math.max(0, (nh - lb.clientHeight) / 2);
+    }
   }
+
+  (function () {
+    const lb  = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+
+    img.addEventListener('pointerdown', e => {
+      lbPointerOrigin = { x: e.clientX, y: e.clientY };
+      lbDragDist = 0;
+      if (img.classList.contains('zoomed')) {
+        lbDragging    = true;
+        lbDragStart   = { x: e.clientX, y: e.clientY };
+        lbScrollStart = { left: lb.scrollLeft, top: lb.scrollTop };
+        img.setPointerCapture(e.pointerId);
+        lb.style.cursor     = 'grabbing';
+        lb.style.userSelect = 'none';
+      } else if (e.pointerType === 'touch') {
+        // Capture so a finger drifting off the (letterboxed) image still
+        // delivers pointermove/pointerup here, for reliable swipe detection.
+        img.setPointerCapture(e.pointerId);
+      }
+    });
+
+    img.addEventListener('pointermove', e => {
+      if (!lbPointerOrigin) return;
+      const dx = e.clientX - lbPointerOrigin.x;
+      const dy = e.clientY - lbPointerOrigin.y;
+      lbDragDist = Math.sqrt(dx * dx + dy * dy);
+      if (lbDragging && lbDragStart) {
+        lb.scrollLeft = lbScrollStart.left - (e.clientX - lbDragStart.x);
+        lb.scrollTop  = lbScrollStart.top  - (e.clientY - lbDragStart.y);
+      }
+    });
+
+    img.addEventListener('pointerup', e => {
+      lbDragging = false;
+      lbDragStart = lbScrollStart = null;
+      lb.style.cursor = lb.style.userSelect = '';
+      if (e.pointerType === 'touch' && lbPointerOrigin && !img.classList.contains('zoomed') && lbPhotos.length > 1) {
+        const dx = e.clientX - lbPointerOrigin.x;
+        const dy = e.clientY - lbPointerOrigin.y;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+          const dir = dx < 0 ? 1 : -1;
+          if (lbIndex + dir >= 0 && lbIndex + dir < lbPhotos.length) stepLightbox(dir);
+        }
+      }
+    });
+
+    img.addEventListener('pointercancel', () => {
+      lbDragging = false;
+      lbDragStart = lbScrollStart = null;
+      lb.style.cursor = lb.style.userSelect = '';
+    });
+  }());
 
   function stepLightbox(dir) {
     lbIndex = Math.max(0, Math.min(lbPhotos.length - 1, lbIndex + dir));
@@ -2301,10 +2897,10 @@
   }
 
   function closeLightbox() {
-    const img = document.getElementById('lightbox-img');
-    img.classList.remove('zoomed');
-    document.getElementById('lightbox').classList.remove('open', 'zoomed');
-    img.src = '';
+    lbResetZoom();
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightbox-img').src = '';
+    document.getElementById('lightbox-date').classList.remove('visible');
   }
 
   function handleLightboxClick(e) {
@@ -2323,18 +2919,13 @@
   function doSubmitFeedback(ref, tree, comment, btn, status, textarea, onSuccess) {
     btn.disabled = true;
     status.innerHTML = withSpinner('Sending…');
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'feedback', ref, tree, comment })
-    }).then(() => {
+    postToScript({ action: 'feedback', ref, tree, comment }).then(() => {
       status.textContent = 'Sent — thank you!';
       textarea.value = '';
       btn.disabled = false;
       if (onSuccess) onSuccess();
-    }).catch(() => {
-      status.textContent = 'Failed to send. Please try again.';
+    }).catch(err => {
+      status.textContent = 'Failed to send: ' + err.message;
       btn.disabled = false;
     });
   }
@@ -2622,6 +3213,34 @@
     toast.innerHTML = '';
   }
 
+  // ── Reposition-tree mode ─────────────────────────────────────────────────────
+  let repositionTarget = null; // { ref, tree, marker } while active
+
+  function startReposition() {
+    const ref = document.getElementById('edit-tree-ref').value;
+    let tree = null, marker = null;
+    markers.forEach((m, t) => { if (!tree && t['Ref'] === ref) { tree = t; marker = m; } });
+    if (!tree) return;
+    closeEditTreeModal();
+    marker.closePopup();
+    repositionTarget = { ref, tree, marker };
+    document.getElementById('map').classList.add('add-mode');
+    const toast = document.getElementById('add-toast');
+    const verb = window.innerWidth <= 767 ? 'Tap' : 'Click';
+    toast.innerHTML = `${verb} on the map to set the new location &nbsp; <a href="#" id="reposition-cancel" style="color:#fff;text-decoration:underline">Cancel</a>`;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    document.getElementById('reposition-cancel').onclick = (e) => { e.preventDefault(); cancelReposition(); };
+  }
+
+  function cancelReposition() {
+    repositionTarget = null;
+    document.getElementById('map').classList.remove('add-mode');
+    const toast = document.getElementById('add-toast');
+    toast.classList.remove('show');
+    toast.innerHTML = '';
+  }
+
   // ── Current location ─────────────────────────────────────────────────────────
   function useCurrentLocation() {
     if (!('geolocation' in navigator)) {
@@ -2659,11 +3278,22 @@
     document.getElementById('add-tree-coords-display').textContent = `${lat}, ${lng}`;
     document.getElementById('add-tree-status').textContent = '';
     document.getElementById('btn-add-tree-submit').disabled = false;
-    // Populate datalist with known species
+    // Populate datalist with known species and wire up common-name autocomplete
     const dl = document.getElementById('add-tree-sci-list');
     if (!dl.children.length) {
-      const species = [...new Set([...markers.keys()].map(t => (t['Scientific name'] || '').trim()).filter(Boolean))].sort();
-      species.forEach(s => { const o = document.createElement('option'); o.value = s; dl.appendChild(o); });
+      const sciToCommon = new Map();
+      for (const t of markers.keys()) {
+        const s = (t['Scientific name'] || '').trim();
+        if (s && !sciToCommon.has(s)) sciToCommon.set(s, (t['Common name'] || '').trim());
+      }
+      [...sciToCommon.keys()].sort().forEach(s => { const o = document.createElement('option'); o.value = s; dl.appendChild(o); });
+      const sciInput    = document.querySelector('#add-tree-form input[name=sci]');
+      const commonInput = document.querySelector('#add-tree-form input[name=common]');
+      sciInput.addEventListener('change', () => {
+        if (commonInput.value) return;
+        const common = sciToCommon.get(sciInput.value.trim());
+        if (common) commonInput.value = common;
+      });
     }
     // Tagify — Tags
     const allTags = [...new Set([...markers.keys()].flatMap(t => parseTags(t['Tags'])))].sort();
@@ -2770,7 +3400,26 @@
     });
   }
 
-  async function compressImage(file) {
+  async function compressImage(file, treeLat, treeLng) {
+    // Read EXIF before canvas strips it.
+    let dateTimeOriginal = null, gpsLat = null, gpsLng = null;
+    try {
+      const [meta, gps] = await Promise.all([
+        exifr.parse(file, ['DateTimeOriginal']),
+        exifr.gps(file)
+      ]);
+      dateTimeOriginal = (meta?.DateTimeOriginal instanceof Date) ? meta.DateTimeOriginal : null;
+      if (gps) { gpsLat = gps.latitude; gpsLng = gps.longitude; }
+    } catch (e) {}
+    // Camera captures (input capture="environment") typically carry no EXIF
+    // date, unlike photos already in the camera roll – fall back to now.
+    if (!dateTimeOriginal) dateTimeOriginal = new Date();
+    // Fall back to tree coordinates if the photo has no GPS.
+    if (gpsLat === null && treeLat != null && !isNaN(parseFloat(treeLat))) {
+      gpsLat = parseFloat(treeLat);
+      gpsLng = parseFloat(treeLng);
+    }
+
     // Resize + re-orient via createImageBitmap (respects EXIF orientation on
     // modern browsers) and re-encode as JPEG to keep the repo lean.
     const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -2781,9 +3430,50 @@
     canvas.width = w; canvas.height = h;
     canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
-    const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+    let dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+
+    // Inject EXIF back into the output JPEG.
+    try {
+      const exifObj = { '0th': {}, 'Exif': {}, 'GPS': {} };
+      if (dateTimeOriginal) {
+        const dt = formatExifDate(dateTimeOriginal);
+        exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal] = dt;
+        exifObj['0th'][piexif.ImageIFD.DateTime] = dt;
+      }
+      if (gpsLat !== null && gpsLng !== null) {
+        exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef]  = gpsLat >= 0 ? 'N' : 'S';
+        exifObj['GPS'][piexif.GPSIFD.GPSLatitude]     = decimalToDMS(Math.abs(gpsLat));
+        exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = gpsLng >= 0 ? 'E' : 'W';
+        exifObj['GPS'][piexif.GPSIFD.GPSLongitude]    = decimalToDMS(Math.abs(gpsLng));
+      }
+      if (dateTimeOriginal || gpsLat !== null) {
+        dataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
+      }
+    } catch (e) {
+      console.warn('EXIF write failed:', e);
+    }
+
     const base64 = dataUrl.split(',')[1];
     return { dataUrl, base64 };
+  }
+
+  function formatExifDate(date) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}:${pad(date.getMonth()+1)}:${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+
+  function decimalToDMS(decimal) {
+    const deg = Math.floor(decimal);
+    const minFloat = (decimal - deg) * 60;
+    const min = Math.floor(minFloat);
+    const sec = Math.round((minFloat - min) * 60 * 100);
+    return [[deg, 1], [min, 1], [sec, 100]];
+  }
+
+  function formatPhotoDate(date) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}, ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
   async function handlePhotoFiles(fileList) {
@@ -2791,7 +3481,9 @@
     for (const file of files) {
       if (pendingPhotos.length >= MAX_PHOTOS) break;
       try {
-        const { dataUrl, base64 } = await compressImage(file);
+        const lat = document.getElementById('add-tree-lat').value;
+        const lng = document.getElementById('add-tree-lng').value;
+        const { dataUrl, base64 } = await compressImage(file, lat, lng);
         pendingPhotos.push({ base64, dataUrl });
       } catch (err) {
         console.warn('Failed to process photo:', err);
@@ -2813,61 +3505,51 @@
   });
 
   function uploadPhotoToScript(filename, base64) {
-    return fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'uploadPhoto',
-        token: readContributorToken(),
-        filename,
-        base64,
-        contentType: 'image/jpeg'
-      })
+    return postToScript({
+      action: 'uploadPhoto',
+      token: readContributorToken(),
+      filename,
+      base64,
+      contentType: 'image/jpeg'
     });
   }
 
   function appendPhotosToScript(ref, paths) {
-    return fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'appendPhotos',
-        token: readContributorToken(),
-        ref,
-        paths
-      })
+    return postToScript({
+      action: 'appendPhotos',
+      token: readContributorToken(),
+      ref,
+      paths
     });
   }
 
   function deletePhotoFromScript(ref, path) {
-    return fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'deletePhoto',
-        token: readContributorToken(),
-        ref,
-        path
-      })
+    return postToScript({
+      action: 'deletePhoto',
+      token: readContributorToken(),
+      ref,
+      path
     });
   }
 
   // ── Remove a photo from an existing tree (called from the popup trash) ────
-  // Confirms, fires the Apps Script delete (no-cors, so we can't read the
-  // result), then optimistically drops the path from the in-memory tree and
-  // re-renders the popup. If the server-side delete failed the photo will
-  // reappear on next page reload — same trade-off as the add-photo flow.
+  // Confirms, fires the Apps Script delete, then optimistically drops the
+  // path from the in-memory tree and re-renders the popup. If the
+  // server-side delete failed the photo will reappear on next page reload —
+  // same trade-off as the add-photo flow — but the user is told it failed.
   async function deletePhotoFromTree(ref, path) {
     if (!canContribute() || !ref || !path) return;
     if (!confirm('Remove this photo?')) return;
     let tree = null;
     markers.forEach((_marker, t) => { if (!tree && t['Ref'] === ref) tree = t; });
     if (!tree) return;
-    try { await deletePhotoFromScript(ref, path); }
-    catch (err) { console.warn('deletePhoto failed:', err); }
+    try {
+      await deletePhotoFromScript(ref, path);
+    } catch (err) {
+      console.warn('deletePhoto failed:', err);
+      showToast('Failed to remove photo: ' + err.message);
+      return;
+    }
     const remaining = parsePhotos(tree['Photos']).filter(p => p !== path);
     tree['Photos'] = remaining.join(', ');
     const popup = markers.get(tree)?.getPopup();
@@ -2887,6 +3569,7 @@
     form.elements['sci'].value          = tree['Scientific name']   || '';
     form.elements['common'].value       = tree['Common name']       || '';
     form.elements['short_name'].value   = tree['Short name']        || '';
+    form.elements['other_names'].value  = tree['Other names']       || '';
     form.elements['notes'].value        = tree['Notes']             || '';
     form.elements['year_planted'].value     = tree['Year planted']      || '';
     form.elements['est_year_planted'].value = tree['Est. year planted'] || '';
@@ -2977,22 +3660,18 @@
     let tree = null;
     markers.forEach((_marker, t) => { if (!tree && t['Ref'] === ref) tree = t; });
     if (!tree) return;
-    // Optimistic removal before the no-cors fetch (response is unreadable anyway).
+    try {
+      await postToScript({ action: 'deleteTree', token: readContributorToken(), ref });
+    } catch (err) {
+      console.warn('deleteTree failed:', err);
+      showToast('Failed to delete tree: ' + err.message);
+      return;
+    }
     closeEditTreeModal();
     const marker = markers.get(tree);
     if (marker) { marker.closePopup(); map.removeLayer(marker); }
     markers.delete(tree);
     updateLabels();
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'deleteTree', token: readContributorToken(), ref })
-      });
-    } catch (err) {
-      console.warn('deleteTree fetch failed:', err);
-    }
     showToast('Tree deleted.');
   }
 
@@ -3012,6 +3691,7 @@
       sci:              form.elements['sci'].value.trim(),
       common:           form.elements['common'].value.trim(),
       short_name:       form.elements['short_name'].value.trim(),
+      other_names:      form.elements['other_names'].value.trim(),
       tags:             tagifyEditTags      ? tagifyEditTags.value.map(t => t.value).join(', ')          : '',
       notes:            form.elements['notes'].value.trim(),
       year_planted:     form.elements['year_planted'].value.trim(),
@@ -3022,12 +3702,7 @@
     };
 
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-      });
+      await postToScript(payload);
 
       // Optimistic update of in-memory tree, popup, and map label.
       let tree = null;
@@ -3036,6 +3711,7 @@
         tree['Scientific name']   = payload.sci;
         tree['Common name']       = payload.common;
         tree['Short name']        = payload.short_name;
+        tree['Other names']       = payload.other_names;
         tree['Tags']              = payload.tags;
         tree['Notes']             = payload.notes;
         tree['Year planted']      = payload.year_planted;
@@ -3055,7 +3731,7 @@
       status.textContent = 'Saved!';
       setTimeout(() => closeEditTreeModal(), 1200);
     } catch (err) {
-      status.textContent = 'Error saving. Please try again.';
+      status.textContent = 'Error saving: ' + err.message;
       btn.disabled = false;
     }
   }
@@ -3118,7 +3794,7 @@
     for (let i = 0; i < accepted.length; i++) {
       setPopupStatus(`Uploading photo ${i + 1} of ${accepted.length}…`, true);
       try {
-        const { base64 } = await compressImage(accepted[i]);
+        const { base64 } = await compressImage(accepted[i], tree['Latitude'], tree['Longitude']);
         const filename = `${tok}-${i + 1}.jpg`;
         await uploadPhotoToScript(filename, base64);
         newPaths.push(`photos/${filename}`);
@@ -3152,6 +3828,34 @@
     });
   });
 
+  // ── Silent reload after add-tree submission ───────────────────────────────────
+  function schedulePostSubmitReloads(lat, lng) {
+    const delays = [4000, 12000, 30000];
+    let attempt = 0;
+    async function tryReload() {
+      const trees = await loadData({ silent: true });
+      if (trees) {
+        const found = trees.some(t => {
+          const tLat = parseFloat(t['Latitude']);
+          const tLng = parseFloat(t['Longitude']);
+          return Math.abs(tLat - lat) < 0.000001 && Math.abs(tLng - lng) < 0.000001;
+        });
+        if (found) {
+          if (pendingAddMarker) { map.removeLayer(pendingAddMarker); pendingAddMarker = null; }
+          return;
+        }
+      }
+      attempt++;
+      if (attempt < delays.length) {
+        setTimeout(tryReload, delays[attempt]);
+      } else {
+        if (pendingAddMarker) { map.removeLayer(pendingAddMarker); pendingAddMarker = null; }
+        showToast('Tree submitted but not yet visible — it may take a few minutes to appear.');
+      }
+    }
+    setTimeout(tryReload, delays[0]);
+  }
+
   // ── Submit ────────────────────────────────────────────────────────────────────
   async function submitAddTree(e) {
     e.preventDefault();
@@ -3163,8 +3867,9 @@
     btn.disabled = true;
 
     // Generate a client-side token used for photo filenames (the Ref column is
-    // computed by a sheet formula and the browser cannot read it back through
-    // the no-cors response — so photo names use this token instead).
+    // computed by an ARRAYFORMULA that only resolves after the sheet recalcs,
+    // so the addTree response can't hand back a real Ref synchronously —
+    // photo names use this token instead).
     const tok = 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
 
     // Upload photos sequentially (one POST each — Apps Script payloads have a
@@ -3198,12 +3903,7 @@
     };
     status.innerHTML = withSpinner('Submitting…');
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-      });
+      await postToScript(payload);
       status.textContent = 'Submitted! Thank you.';
       if (pendingAddMarker) map.removeLayer(pendingAddMarker);
       const newLat = parseFloat(lat);
@@ -3214,9 +3914,10 @@
       // Pan/zoom to the new tree so the adopter sees it, especially when the
       // first tree drops them away from the placeholder fallback view.
       map.flyTo([newLat, newLng], Math.max(map.getZoom(), 18), { duration: 1.0 });
+      schedulePostSubmitReloads(newLat, newLng);
       setTimeout(() => closeAddTreeModal(), 1800);
     } catch (err) {
-      status.textContent = 'Error submitting. Please try again.';
+      status.textContent = 'Error submitting: ' + err.message;
       btn.disabled = false;
     }
   }
@@ -3238,6 +3939,20 @@
       if (addMarker) map.removeLayer(addMarker);
       addMarker = L.marker(e.latlng, { icon: crosshairIcon, interactive: false }).addTo(map);
       openAddTreeModal(lat, lng);
+    } else if (repositionTarget) {
+      const lat = e.latlng.lat.toFixed(7);
+      const lng = e.latlng.lng.toFixed(7);
+      const { ref, tree, marker } = repositionTarget;
+      cancelReposition();
+      marker.setLatLng([parseFloat(lat), parseFloat(lng)]);
+      tree['Latitude']  = lat;
+      tree['Longitude'] = lng;
+      postToScript({ action: 'repositionTree', token: readContributorToken(), ref, lat, lng })
+        .then(() => showToast('Tree repositioned.'))
+        .catch(err => {
+          console.warn('repositionTree failed:', err);
+          showToast('Failed to reposition tree: ' + err.message);
+        });
     }
   });
 
@@ -3249,6 +3964,7 @@
     if (addTreeState === 'modal-open') { closeAddTreeModal(); return; }
     if (addTreeState === 'copy-mode')  { exitCopyMode(); return; }
     if (addTreeState === 'click-map-mode') { cancelAddTree(); return; }
+    if (repositionTarget)              { cancelReposition(); return; }
   });
 
   // ── USER LOCATION ────────────────────────────────────────────────────────────

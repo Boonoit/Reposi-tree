@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Bayonne Park",
+    "lat": 51.485142,
+    "lng": -0.215255,
+    "url": "https://bayonne-park.parktreemap.org/"
+  },
+  {
+    "name": "Lillie Road Recreation Ground",
+    "lat": 51.4827750,
+    "lng": -0.2176881,
+    "url": "https://boonoit.github.io/Reposi-tree/"
+  },
+  {
+    "name": "Fulham Cemetery",
+    "lat": 51.4804700,
+    "lng": -0.2165562,
+    "url": "https://trees.fulhamcemeteryfriends.org.uk/"
+  },
+  {
+    "name": "Normand Park",
+    "lat": 51.484604,
+    "lng": -0.206704,
+    "url": "https://normand-park.parktreemap.org/"
+  }
+]
